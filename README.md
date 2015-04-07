@@ -11,6 +11,8 @@ This project allows you to register Undertow handlers using javascript, which ca
 as CDI beans. It supports hot deployment, so it is possible to modify your scripts without any compile + redeploy
 cycle (especially when combined with the upcoming external resource support in Wildfly). 
 
+Note that this project requires JDK8, as it uses Nashorn as the script engine.
+
 Getting Started
 ---------------
 

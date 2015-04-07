@@ -49,6 +49,9 @@
         <version.org.jboss.logmanager>1.5.3.Final</version.org.jboss.logmanager>
         <version.xnio>3.3.0.Final</version.xnio>
         <version.javax.enterprise.api>1.1</version.javax.enterprise.api>
+
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
     </properties>
 
     <dependencies>
