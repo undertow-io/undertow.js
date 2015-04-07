@@ -1,0 +1,2 @@
+io.undertow.js.providers.cdi.CDIInjectionProvider
+io.undertow.js.providers.jndi.JNDIInjectionProvider
