@@ -30,7 +30,7 @@
 
     <groupId>io.undertow.js</groupId>
     <artifactId>undertow-js</artifactId>
-    <version>1.0.0.Alpha1-SNAPSHOT</version>
+    <version>1.0.0.Alpha1</version>
 
     <name>Undertow Javascript API</name>
 
