@@ -34,7 +34,6 @@ $undertow
         } else {
             $exchange.status(404);
         }
-        $exchange.send(JSON.stringify(customer));
     }])
     .onGet("/customers",['db', function ($exchange, db) {
         var customers = db.select("select * from customer");
