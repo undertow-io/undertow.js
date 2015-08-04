@@ -256,6 +256,18 @@ public class SimpleJavascriptTestCase {
         }
     }
 
+    @Test
+    public void testSimpleMustacheTemplate() throws IOException {
+        final TestHttpClient client = new TestHttpClient();
+        try {
+            HttpGet get = new HttpGet(DefaultServer.getDefaultServerURL() + "/testTemplate1");
+            HttpResponse result = client.execute(get);
+            Assert.assertEquals(StatusCodes.OK, result.getStatusLine().getStatusCode());
+            Assert.assertEquals("Templace Data: Some Data", HttpClientUtils.readResponse(result));
+        } finally {
+            client.getConnectionManager().shutdown();
+        }
+    }
     private static final class TestInjectionProvider implements InjectionProvider {
 
         @Override

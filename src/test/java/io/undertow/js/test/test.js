@@ -34,7 +34,7 @@ $undertow
     .onGet("/testSendRedirect", function($exchange) {
         $exchange.sendRedirect("/testResponseSender");
     })
-    .onGet("/testPredicatedHandlers", "equals[%{i,my-header}, foo]", function ($exchange) {
+    .onGet("/testPredicatedHandlers", {predicate: "equals[%{i,my-header}, foo]"}, function ($exchange) {
         $exchange.send("Foo Header");
     })
     .onGet("/testPredicatedHandlers", function ($exchange) {
@@ -49,7 +49,7 @@ $undertow
     .onPost("/testEntityInjection", ['$entity:string', function($exchange, entity) {
         $exchange.send(201, entity);
     }])
-    .onPost("/testEntityJsonInjection", "equals[%{i,content-type}, text/json]", ['json', function($exchange, entity) {
+    .onPost("/testEntityJsonInjection", {predicate: "equals[%{i,content-type}, text/json]"}, ['json', function($exchange, entity) {
         $exchange.send(entity['first']);
     }])
     .onGet("/testWrapper", function($exchange) {
@@ -57,5 +57,9 @@ $undertow
     })
     .onPost("/testForm1", ['$entity:form', function($exchange, form) {
         return JSON.stringify(form);
-    }]);
+    }])
+
+    .onGet("/testTemplate1", "template1.txt", function($exchange) {
+        return {data: "Some Data"};
+    });
 

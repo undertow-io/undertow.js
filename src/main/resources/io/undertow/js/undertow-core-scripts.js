@@ -32,7 +32,8 @@ var $undertow = {
         DataSource: Java.type("javax.sql.DataSource"),
         HandlerWrapper: Java.type("io.undertow.server.HandlerWrapper"),
         EagerFormParsingHandler: Java.type("io.undertow.server.handlers.form.EagerFormParsingHandler"),
-        FormDataParser: Java.type("io.undertow.server.handlers.form.FormDataParser")
+        FormDataParser: Java.type("io.undertow.server.handlers.form.FormDataParser"),
+        Templates: Java.type("io.undertow.js.templates.Templates")
     },
 
     injection_aliases: {},
@@ -49,6 +50,8 @@ var $undertow = {
         }
 
     },
+
+    templateType: "mustache",
 
     injection_wrappers: [
         /**
@@ -254,7 +257,6 @@ var $undertow = {
         }
 
         this.selectOne = function () {
-
             var result = this._select(Array.prototype.slice.call(arguments));
             if (result.length == 0) {
                 return null;
@@ -368,7 +370,7 @@ var $undertow = {
      * @returns {*} a HttpHandler implementation that can be registered with Undertow
      * @private
      */
-    _create_handler_function: function (userHandler) {
+    _create_handler_function: function (userHandler, template) {
         if (userHandler == null) {
             throw "handler function cannot be null";
         }
@@ -380,13 +382,21 @@ var $undertow = {
                 params.push($undertow._create_injection_function(userHandler[i]));
             }
         }
+        var templateInstance = null;
+        if(template != null) {
+            var templateProvider = $undertow._java.Templates.loadTemplateProvider($undertow_support.classLoader, $undertow.templateType);
+            templateProvider.init({});
+
+            templateInstance = templateProvider.compile($undertow._java.Templates.loadTemplate(template, $undertow_support.classLoader));
+
+        }
+
         var httpHandler = new $undertow._java.HttpHandler({
             handleRequest: function (underlyingExchange) {
                 if (underlyingExchange.inIoThread) {
                     underlyingExchange.dispatch(httpHandler);
                     return;
                 }
-
                 var $exchange = new $undertow.Exchange(underlyingExchange);
 
                 var paramList = [];
@@ -394,7 +404,11 @@ var $undertow = {
                 $undertow._create_injected_parameter_list(params, paramList, $exchange);
                 var result = handler.apply(null, paramList);
                 if(result != null) {
-                    $exchange.send(result);
+                    if (template != null) {
+                        $exchange.send(templateInstance.apply(result));
+                    } else {
+                        $exchange.send(result);
+                    }
                 }
             }
         });
@@ -467,7 +481,19 @@ var $undertow = {
 
     onRequest: function (method, route) {
         if (arguments.length > 3) {
-            $undertow_support.routingHandler.add(method, route, $undertow._java.PredicateParser.parse(arguments[2], $undertow_support.classLoader), $undertow._create_handler_function(arguments[3]));
+            var template = null;
+            var predicate = null;
+            if(typeof arguments[2] == 'string') {
+                template = arguments[2];
+            } else {
+                template = arguments[2]["template"];
+                predicate = arguments[2]["predicate"];
+            }
+            if(predicate != null) {
+                $undertow_support.routingHandler.add(method, route, $undertow._java.PredicateParser.parse(predicate, $undertow_support.classLoader), $undertow._create_handler_function(arguments[3], template));
+            } else {
+                $undertow_support.routingHandler.add(method, route, $undertow._create_handler_function(arguments[3], template));
+            }
         } else {
             $undertow_support.routingHandler.add(method, route, $undertow._create_handler_function(arguments[2]));
         }
