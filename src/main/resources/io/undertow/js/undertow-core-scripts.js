@@ -163,16 +163,16 @@ var $undertow = {
             }
         }
 
-        this.select = function () {
+        this._select = function (args) {
             var conn = null;
             var statement = null;
             var rs = null;
             try {
                 conn = $underlying.getConnection();
                 conn.setAutoCommit(true); //TODO: how to deal with transactions?
-                statement = conn.prepareStatement(arguments[0]);
-                for (var i = 1; i < arguments.length; ++i) {
-                    statement.setObject(i, arguments[i]);
+                statement = conn.prepareStatement(args[0]);
+                for (var i = 1; i < args.length; ++i) {
+                    statement.setObject(i, args[i]);
                 }
 
                 rs = statement.executeQuery();
@@ -243,10 +243,13 @@ var $undertow = {
                 }
             }
         };
+        this.select = function () {
+            return this._select(Array.prototype.slice.call(arguments));
+        }
 
         this.selectOne = function () {
 
-            var result = this.select.apply(null, arguments);
+            var result = this._select(Array.prototype.slice.call(arguments));
             if (result.length == 0) {
                 return null;
             } else if (result.length > 1) {
