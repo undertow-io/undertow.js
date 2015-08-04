@@ -61,5 +61,8 @@ $undertow
 
     .onGet("/testTemplate1", "template1.txt", function($exchange) {
         return {data: "Some Data"};
+    })
+    .onGet("/testTemplate2", {template: "template1.txt", headers: {'Content-Type': "text/plain; charset=UTF-8;", 'foo': 'bar'}}, function($exchange) {
+        return {data: "Some Data"};
     });
 

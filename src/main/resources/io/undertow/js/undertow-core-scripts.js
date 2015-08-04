@@ -20,8 +20,6 @@
 /**
  * Undertow scripts that provide core javascript functionality
  */
-
-
 var $undertow = {
     _java: {
         HttpHandler: Java.type("io.undertow.server.HttpHandler"),
@@ -52,6 +50,7 @@ var $undertow = {
     },
 
     templateType: "mustache",
+    templateContentType: "text/html; charset=UTF-8",
 
     injection_wrappers: [
         /**
@@ -370,7 +369,7 @@ var $undertow = {
      * @returns {*} a HttpHandler implementation that can be registered with Undertow
      * @private
      */
-    _create_handler_function: function (userHandler, template) {
+    _create_handler_function: function (userHandler, args) {
         if (userHandler == null) {
             throw "handler function cannot be null";
         }
@@ -382,14 +381,23 @@ var $undertow = {
                 params.push($undertow._create_injection_function(userHandler[i]));
             }
         }
+        var template = args["template"];
         var templateInstance = null;
+
+        var headers = args["headers"];
+        if(headers == null) {
+            headers = {};
+        }
         if(template != null) {
             var templateProvider = $undertow._java.Templates.loadTemplateProvider($undertow_support.classLoader, $undertow.templateType);
             templateProvider.init({});
-
             templateInstance = templateProvider.compile($undertow._java.Templates.loadTemplate(template, $undertow_support.classLoader));
-
+            if(headers['Content-Type'] == null) {
+                headers['Content-Type'] = $undertow.templateContentType;
+            }
         }
+
+
 
         var httpHandler = new $undertow._java.HttpHandler({
             handleRequest: function (underlyingExchange) {
@@ -397,8 +405,12 @@ var $undertow = {
                     underlyingExchange.dispatch(httpHandler);
                     return;
                 }
+
                 var $exchange = new $undertow.Exchange(underlyingExchange);
 
+                for(var k in headers) {
+                    $exchange.responseHeaders(k, headers[k]);
+                }
                 var paramList = [];
                 paramList.push($exchange);
                 $undertow._create_injected_parameter_list(params, paramList, $exchange);
@@ -406,8 +418,10 @@ var $undertow = {
                 if(result != null) {
                     if (template != null) {
                         $exchange.send(templateInstance.apply(result));
-                    } else {
+                    } else if(typeof result == 'string') {
                         $exchange.send(result);
+                    } else {
+                        $exchange.send(JSON.stringify(result));
                     }
                 }
             }
@@ -481,21 +495,21 @@ var $undertow = {
 
     onRequest: function (method, route) {
         if (arguments.length > 3) {
-            var template = null;
+            var args = null;
             var predicate = null;
             if(typeof arguments[2] == 'string') {
-                template = arguments[2];
+                args = {"template": arguments[2]}
             } else {
-                template = arguments[2]["template"];
+                args = arguments[2];
                 predicate = arguments[2]["predicate"];
             }
             if(predicate != null) {
-                $undertow_support.routingHandler.add(method, route, $undertow._java.PredicateParser.parse(predicate, $undertow_support.classLoader), $undertow._create_handler_function(arguments[3], template));
+                $undertow_support.routingHandler.add(method, route, $undertow._java.PredicateParser.parse(predicate, $undertow_support.classLoader), $undertow._create_handler_function(arguments[3], args));
             } else {
-                $undertow_support.routingHandler.add(method, route, $undertow._create_handler_function(arguments[3], template));
+                $undertow_support.routingHandler.add(method, route, $undertow._create_handler_function(arguments[3], args));
             }
         } else {
-            $undertow_support.routingHandler.add(method, route, $undertow._create_handler_function(arguments[2]));
+            $undertow_support.routingHandler.add(method, route, $undertow._create_handler_function(arguments[2], {}));
         }
 
         return $undertow;
