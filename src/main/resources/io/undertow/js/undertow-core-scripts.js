@@ -30,7 +30,9 @@ var $undertow = {
         PredicateHandler: Java.type("io.undertow.server.handlers.PredicateHandler"),
         StringReadHandler: Java.type("io.undertow.js.StringReadHandler"),
         DataSource: Java.type("javax.sql.DataSource"),
-        HandlerWrapper: Java.type("io.undertow.server.HandlerWrapper")
+        HandlerWrapper: Java.type("io.undertow.server.HandlerWrapper"),
+        EagerFormParsingHandler: Java.type("io.undertow.server.handlers.form.EagerFormParsingHandler"),
+        FormDataParser: Java.type("io.undertow.server.handlers.form.FormDataParser")
     },
 
     injection_aliases: {},
@@ -41,7 +43,11 @@ var $undertow = {
 
         json: function (data) {
             return JSON.parse(data);
+        },
+        form: function(data) {
+
         }
+
     },
 
     injection_wrappers: [
@@ -277,18 +283,68 @@ var $undertow = {
             var prefix = p.substr(0, index);
             var suffix = p.substr(index + 1);
             if (prefix == '$entity') {
-                return function (exchange) {
-                    var data = exchange.$underlying.getAttachment($undertow._java.StringReadHandler.DATA);
-                    if (suffix == null) {
-                        return data;
-                    } else {
-                        var parser = $undertow.entity_parsers[suffix];
-                        if (parser == null) {
+                if(suffix == 'form') {
+                    return function (exchange) {
+                        //we handle form encoded data specially
+                        //as we rely on Undertow's built in parsers
+                        //note that this includes both multipart and form encoded data, we don't differentiate
+                        var data = exchange.$underlying.getAttachment($undertow._java.FormDataParser.FORM_DATA);
+
+                        if (data == null) {
+                            return data;
+                        }
+                        //now we turn the data in JS
+                        var ret = {};
+                        var it = data.iterator();
+                        while (it.hasNext()) {
+                            var key = it.next();
+                            var data = data.get(key);
+                            if (data.size() == 1) {
+                                var item = data.getFirst();
+                                if (item.isFile()) {
+                                    ret[key] = {
+                                        file: item.file,
+                                        headers: item.headers,
+                                        fileName: item.fileName
+                                    }
+                                } else {
+                                    ret[key] = item.value;
+                                }
+                            } else {
+                                var itemArray = [];
+                                var ii = data.iterator();
+                                while (ii.hasNext()) {
+                                    var item = ii.next();
+                                    if (item.isFile()) {
+                                        itemArray.push({
+                                            file: item.file,
+                                            headers: item.headers,
+                                            fileName: item.fileName
+                                        });
+                                    } else {
+                                        itemArray.push(item.value);
+                                    }
+                                }
+                                ret[key] = itemArray;
+                            }
+                        }
+                        return ret;
+                    }
+                } else {
+                    return function (exchange) {
+                        var data = exchange.$underlying.getAttachment($undertow._java.StringReadHandler.DATA);
+                        if (suffix == null) {
                             return data;
                         } else {
-                            return parser(data);
+                            var parser = $undertow.entity_parsers[suffix];
+                            if (parser == null) {
+                                return data;
+                            } else {
+                                return parser(data);
+                            }
                         }
                     }
+
                 }
             } else {
                 var provider = $undertow_support.injectionProviders[prefix];
@@ -336,7 +392,10 @@ var $undertow = {
                 var paramList = [];
                 paramList.push($exchange);
                 $undertow._create_injected_parameter_list(params, paramList, $exchange);
-                handler.apply(null, paramList);
+                var result = handler.apply(null, paramList);
+                if(result != null) {
+                    $exchange.send(result);
+                }
             }
         });
         for(var i in $undertow._wrappers) {
@@ -345,7 +404,7 @@ var $undertow = {
         for (var i in $undertow_support.handlerWrappers) {
             httpHandler = $undertow_support.handlerWrappers[i].wrap(httpHandler);
         }
-        return new $undertow._java.StringReadHandler(httpHandler);
+        return new $undertow._java.EagerFormParsingHandler().setNext(new $undertow._java.StringReadHandler(httpHandler));
     },
 
     /**

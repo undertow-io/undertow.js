@@ -30,9 +30,11 @@ import io.undertow.testutils.TestHttpClient;
 import io.undertow.util.HttpString;
 import io.undertow.util.StatusCodes;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.message.BasicNameValuePair;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -40,6 +42,7 @@ import org.junit.runner.RunWith;
 
 import javax.script.ScriptException;
 import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * @author Stuart Douglas
@@ -227,6 +230,27 @@ public class SimpleJavascriptTestCase {
             Assert.assertEquals(StatusCodes.OK, result.getStatusLine().getStatusCode());
             Assert.assertEquals("wrapper", HttpClientUtils.readResponse(result));
             Assert.assertEquals("INJECTED:my-wrapper", result.getFirstHeader("Wrapper").getValue());
+        } finally {
+            client.getConnectionManager().shutdown();
+        }
+    }
+
+
+    @Test
+    public void testFormParsing() throws IOException {
+        final TestHttpClient client = new TestHttpClient();
+        try {
+            HttpPost post = new HttpPost(DefaultServer.getDefaultServerURL() + "/testForm1");
+            post.setEntity(new UrlEncodedFormEntity(Arrays.asList(new BasicNameValuePair("key1", "value1"))));
+            HttpResponse result = client.execute(post);
+            Assert.assertEquals(StatusCodes.OK, result.getStatusLine().getStatusCode());
+            Assert.assertEquals("{\"key1\":\"value1\"}", HttpClientUtils.readResponse(result));
+
+            post = new HttpPost(DefaultServer.getDefaultServerURL() + "/testForm1");
+            post.setEntity(new UrlEncodedFormEntity(Arrays.asList(new BasicNameValuePair("key1", "value1"), new BasicNameValuePair("key1", "value1"))));
+            result = client.execute(post);
+            Assert.assertEquals(StatusCodes.OK, result.getStatusLine().getStatusCode());
+            Assert.assertEquals("{\"key1\":[\"value1\",\"value1\"]}", HttpClientUtils.readResponse(result));
         } finally {
             client.getConnectionManager().shutdown();
         }

@@ -54,5 +54,8 @@ $undertow
     }])
     .onGet("/testWrapper", function($exchange) {
         $exchange.send("wrapper");
-    });
+    })
+    .onPost("/testForm1", ['$entity:form', function($exchange, form) {
+        return JSON.stringify(form);
+    }]);
 
