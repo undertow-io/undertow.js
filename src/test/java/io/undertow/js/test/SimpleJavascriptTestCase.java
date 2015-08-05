@@ -263,13 +263,13 @@ public class SimpleJavascriptTestCase {
             HttpGet get = new HttpGet(DefaultServer.getDefaultServerURL() + "/testTemplate1");
             HttpResponse result = client.execute(get);
             Assert.assertEquals(StatusCodes.OK, result.getStatusLine().getStatusCode());
-            Assert.assertEquals("Templace Data: Some Data", HttpClientUtils.readResponse(result));
+            Assert.assertEquals("Template Data: Some Data", HttpClientUtils.readResponse(result));
             Assert.assertEquals("text/html; charset=UTF-8", result.getFirstHeader("Content-Type").getValue());
 
             get = new HttpGet(DefaultServer.getDefaultServerURL() + "/testTemplate2");
             result = client.execute(get);
             Assert.assertEquals(StatusCodes.OK, result.getStatusLine().getStatusCode());
-            Assert.assertEquals("Templace Data: Some Data", HttpClientUtils.readResponse(result));
+            Assert.assertEquals("Template Data: Some Data  a1-b1  a2-b2 ", HttpClientUtils.readResponse(result));
             Assert.assertEquals("text/plain; charset=UTF-8", result.getFirstHeader("Content-Type").getValue());
         } finally {
             client.getConnectionManager().shutdown();

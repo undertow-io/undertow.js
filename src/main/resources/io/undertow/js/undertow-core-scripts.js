@@ -31,7 +31,9 @@ var $undertow = {
         HandlerWrapper: Java.type("io.undertow.server.HandlerWrapper"),
         EagerFormParsingHandler: Java.type("io.undertow.server.handlers.form.EagerFormParsingHandler"),
         FormDataParser: Java.type("io.undertow.server.handlers.form.FormDataParser"),
-        Templates: Java.type("io.undertow.js.templates.Templates")
+        Templates: Java.type("io.undertow.js.templates.Templates"),
+        HashMap: Java.type("java.util.HashMap"),
+        LinkedList: Java.type("java.util.LinkedList")
     },
 
     injection_aliases: {},
@@ -417,7 +419,7 @@ var $undertow = {
                 var result = handler.apply(null, paramList);
                 if(result != null) {
                     if (template != null) {
-                        $exchange.send(templateInstance.apply(result));
+                        $exchange.send(templateInstance.apply($undertow.toTemplateData(result)));
                     } else if(typeof result == 'string') {
                         $exchange.send(result);
                     } else {
@@ -584,6 +586,26 @@ var $undertow = {
             m[n] = val[n];
         }
         return m;
+    },
+
+    toTemplateData: function (val) {
+
+        if(Array.isArray(val)) {
+            var list = new $undertow._java.LinkedList();
+            for (var i in val) {
+                list.add($undertow.toTemplateData(val[i]));
+            }
+            return list;
+        } else if (typeof val == 'object') {
+            var map = new $undertow._java.HashMap();
+            var keys = Object.keys(val);
+            for (var i in keys) {
+                map.put(keys[i], $undertow.toTemplateData(val[keys[i]]));
+            }
+            return map;
+        } else {
+            return val;
+        }
     }
 };
 
@@ -614,3 +636,4 @@ JSON.stringify = function (value, replacer, space) {
     return $undertow._oldStringify(value, newReplacer, space);
 
 };
+

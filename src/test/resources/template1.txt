@@ -1,1 +1,1 @@
-Templace Data: {{data}}
+Template Data: {{data}}
