@@ -1,8 +1,11 @@
 package io.undertow.js.templates;
 
+import io.undertow.js.UndertowScriptLogger;
+import io.undertow.server.handlers.resource.Resource;
+import io.undertow.server.handlers.resource.ResourceManager;
+
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.util.Map;
 import java.util.ServiceLoader;
 
 /**
@@ -20,10 +23,17 @@ public class Templates {
         return null;
     }
 
-    public static String loadTemplate(String template, ClassLoader classLoader) throws Exception {
+    public static String loadTemplate(String template, ResourceManager resourceManager) throws Exception {
         byte[] buf = new byte[1024];
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (InputStream stream = classLoader.getResourceAsStream(template)) {
+        Resource resource = resourceManager.getResource(template);
+        if(resource == null) {
+            throw UndertowScriptLogger.ROOT_LOGGER.templateNotFound(template);
+        }
+        try (InputStream stream = resource.getUrl().openStream()) {
+            if(stream == null) {
+                throw UndertowScriptLogger.ROOT_LOGGER.templateNotFound(template);
+            }
             int res;
             while ((res = stream.read(buf)) > 0) {
                 out.write(buf, 0, res);

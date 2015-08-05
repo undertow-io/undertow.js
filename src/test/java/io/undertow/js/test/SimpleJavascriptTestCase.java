@@ -53,6 +53,7 @@ public class SimpleJavascriptTestCase {
     @BeforeClass
     public static void setup() throws ScriptException, IOException {
 
+        final ClassPathResourceManager res = new ClassPathResourceManager(SimpleJavascriptTestCase.class.getClassLoader(), SimpleJavascriptTestCase.class.getPackage());
         UndertowJS js = UndertowJS.builder()
                 .addHandlerWrapper(new HandlerWrapper() {
                     @Override
@@ -67,7 +68,8 @@ public class SimpleJavascriptTestCase {
                     }
                 })
                 .addInjectionProvider(new TestInjectionProvider())
-                .addResources(new ClassPathResourceManager(SimpleJavascriptTestCase.class.getClassLoader(), SimpleJavascriptTestCase.class.getPackage()), "test.js").build();
+                .addResources(res, "test.js")
+                .setResourceManager(res).build();
         js.start();
         DefaultServer.setRootHandler(js.getHandler(new HttpHandler() {
             @Override

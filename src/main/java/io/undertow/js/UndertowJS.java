@@ -65,6 +65,7 @@ public class UndertowJS {
     private final Map<String, InjectionProvider> injectionProviders;
     private final JavabeanIntrospector javabeanIntrospector = new JavabeanIntrospector();
     private final List<HandlerWrapper> handlerWrappers;
+    private final ResourceManager resourceManager;
 
 
     private ScriptEngine engine;
@@ -72,12 +73,13 @@ public class UndertowJS {
     private Map<Resource, Date> lastModified;
     private volatile long lastHotDeploymentCheck = -1;
 
-    public UndertowJS(List<ResourceSet> resources, boolean hotDeployment, ClassLoader classLoader, Map<String, InjectionProvider> injectionProviders, List<HandlerWrapper> handlerWrappers) {
+    public UndertowJS(List<ResourceSet> resources, boolean hotDeployment, ClassLoader classLoader, Map<String, InjectionProvider> injectionProviders, List<HandlerWrapper> handlerWrappers, ResourceManager resourceManager) {
         this.classLoader = classLoader;
         this.injectionProviders = injectionProviders;
         this.handlerWrappers = handlerWrappers;
         this.resources = new ArrayList<>(resources);
         this.hotDeployment = hotDeployment;
+        this.resourceManager = resourceManager;
     }
 
     public UndertowJS start() throws ScriptException, IOException {
@@ -102,7 +104,7 @@ public class UndertowJS {
         });
 
 
-        UndertowSupport support = new UndertowSupport(routingHandler, classLoader, injectionProviders, javabeanIntrospector, handlerWrappers);
+        UndertowSupport support = new UndertowSupport(routingHandler, classLoader, injectionProviders, javabeanIntrospector, handlerWrappers, resourceManager);
         engine.put("$undertow_support", support);
         engine.put(ScriptEngine.FILENAME, "undertow-core-scripts.js");
         engine.eval(FileUtils.readFile(UndertowJS.class, "undertow-core-scripts.js"));
@@ -188,6 +190,7 @@ public class UndertowJS {
         private ClassLoader classLoader = UndertowJS.class.getClassLoader();
         private final Map<String, InjectionProvider> injectionProviders = new HashMap<>();
         private final List<HandlerWrapper> handlerWrappers = new ArrayList<>();
+        private ResourceManager resourceManager;
 
         public ResourceSet addResourceSet(ResourceManager manager) {
             ResourceSet resourceSet = new ResourceSet(manager);
@@ -237,8 +240,13 @@ public class UndertowJS {
             return this;
         }
 
+        public Builder setResourceManager(ResourceManager resourceManager) {
+            this.resourceManager = resourceManager;
+            return this;
+        }
+
         public UndertowJS build() {
-            return new UndertowJS(resources, hotDeployment, classLoader, injectionProviders, handlerWrappers);
+            return new UndertowJS(resources, hotDeployment, classLoader, injectionProviders, handlerWrappers, resourceManager);
         }
     }
 
@@ -322,13 +330,15 @@ public class UndertowJS {
         private final Map<String, InjectionProvider> injectionProviders;
         private final JavabeanIntrospector javabeanIntrospector;
         private final List<HandlerWrapper> handlerWrappers;
+        private final ResourceManager resourceManager;
 
-        public UndertowSupport(RoutingHandler routingHandler, ClassLoader classLoader, Map<String, InjectionProvider> injectionProviders, JavabeanIntrospector javabeanIntrospector, List<HandlerWrapper> handlerWrappers) {
+        public UndertowSupport(RoutingHandler routingHandler, ClassLoader classLoader, Map<String, InjectionProvider> injectionProviders, JavabeanIntrospector javabeanIntrospector, List<HandlerWrapper> handlerWrappers, ResourceManager resourceManager) {
             this.routingHandler = routingHandler;
             this.classLoader = classLoader;
             this.injectionProviders = injectionProviders;
             this.javabeanIntrospector = javabeanIntrospector;
             this.handlerWrappers = handlerWrappers;
+            this.resourceManager = resourceManager;
         }
 
         public ClassLoader getClassLoader() {
@@ -349,6 +359,10 @@ public class UndertowJS {
 
         public RoutingHandler getRoutingHandler() {
             return routingHandler;
+        }
+
+        public ResourceManager getResourceManager() {
+            return resourceManager;
         }
     }
 

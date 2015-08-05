@@ -58,7 +58,6 @@ $undertow
     .onPost("/testForm1", ['$entity:form', function($exchange, form) {
         return JSON.stringify(form);
     }])
-
     .onGet("/testTemplate1", "template1.txt", function($exchange) {
         return {data: "Some Data"};
     })

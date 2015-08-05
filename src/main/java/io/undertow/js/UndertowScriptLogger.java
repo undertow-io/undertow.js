@@ -49,4 +49,7 @@ public interface UndertowScriptLogger extends BasicLogger {
 
     @Message(id = 4, value = "Could not find script file %s")
     RuntimeException couldNotFileScript(String path);
+
+    @Message(id = 5, value = "Could not find template file %s")
+    IllegalArgumentException templateNotFound(String template);
 }

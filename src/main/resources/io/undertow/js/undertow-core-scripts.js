@@ -154,32 +154,19 @@ var $undertow = {
         this.query = function () {
             var conn = null;
             var statement = null;
-            try {
                 conn = $underlying.getConnection();
-                conn.setAutoCommit(true); //TODO: how to deal with transactions?
                 statement = conn.prepareStatement(arguments[0]);
                 for (var i = 1; i < arguments.length; ++i) {
                     statement.setObject(i, arguments[i]);
                 }
                 statement.execute();
-            } finally {
-                if (statement != null) {
-                    statement.close();
-                }
-                if (conn != null) {
-                    conn.close();
-                }
-
-            }
         }
 
         this._select = function (args) {
             var conn = null;
             var statement = null;
             var rs = null;
-            try {
                 conn = $underlying.getConnection();
-                conn.setAutoCommit(true); //TODO: how to deal with transactions?
                 statement = conn.prepareStatement(args[0]);
                 for (var i = 1; i < args.length; ++i) {
                     statement.setObject(i, args[i]);
@@ -241,17 +228,6 @@ var $undertow = {
                 statement.close();
                 conn.close();
                 return ret;
-            } catch (e) {
-                if (rs != null) {
-                    rs.close();
-                }
-                if (statement != null) {
-                    statement.close();
-                }
-                if (conn != null) {
-                    conn.close();
-                }
-            }
         };
         this.select = function () {
             return this._select(Array.prototype.slice.call(arguments));
@@ -301,9 +277,9 @@ var $undertow = {
                         var it = data.iterator();
                         while (it.hasNext()) {
                             var key = it.next();
-                            var data = data.get(key);
-                            if (data.size() == 1) {
-                                var item = data.getFirst();
+                            var fv = data.get(key);
+                            if (fv.size() == 1) {
+                                var item = fv.getFirst();
                                 if (item.isFile()) {
                                     ret[key] = {
                                         file: item.file,
@@ -315,7 +291,7 @@ var $undertow = {
                                 }
                             } else {
                                 var itemArray = [];
-                                var ii = data.iterator();
+                                var ii = fv.iterator();
                                 while (ii.hasNext()) {
                                     var item = ii.next();
                                     if (item.isFile()) {
@@ -365,6 +341,19 @@ var $undertow = {
     },
 
     /**
+     * Manually resolves an injection
+     *
+     * @param name The item to resolve
+     */
+    resolve: function(name) {
+        var value =  $undertow._create_injection_function(name)();
+        for (var j = 0; j < $undertow.injection_wrappers.length; ++j) {
+            value = $undertow.injection_wrappers[j](value);
+        }
+        return value;
+    },
+
+    /**
      * Creates a handler function for a terminal handler
      *
      * @param  userHandler The handler function/array
@@ -393,7 +382,7 @@ var $undertow = {
         if(template != null) {
             var templateProvider = $undertow._java.Templates.loadTemplateProvider($undertow_support.classLoader, $undertow.templateType);
             templateProvider.init({});
-            templateInstance = templateProvider.compile($undertow._java.Templates.loadTemplate(template, $undertow_support.classLoader));
+            templateInstance = templateProvider.compile($undertow._java.Templates.loadTemplate(template, $undertow_support.resourceManager));
             if(headers['Content-Type'] == null) {
                 headers['Content-Type'] = $undertow.templateContentType;
             }

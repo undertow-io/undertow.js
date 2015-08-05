@@ -109,6 +109,7 @@ public class UndertowJSServletExtension implements ServletExtension {
                 });
                 builder.setHotDeployment(true); //todo: configurable?
                 builder.setClassLoader(classLoader);
+                builder.setResourceManager(resourceManager);
                 UndertowJS js = builder.build();
                 js.start();
 
