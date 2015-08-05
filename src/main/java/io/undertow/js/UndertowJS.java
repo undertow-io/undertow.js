@@ -27,6 +27,7 @@ import io.undertow.server.handlers.resource.ResourceChangeListener;
 import io.undertow.server.handlers.resource.ResourceManager;
 import io.undertow.util.AttachmentKey;
 import io.undertow.util.FileUtils;
+import io.undertow.util.StatusCodes;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -43,9 +44,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -72,6 +75,7 @@ public class UndertowJS {
     private RoutingHandler routingHandler;
     private Map<Resource, Date> lastModified;
     private volatile long lastHotDeploymentCheck = -1;
+    private volatile Set<String> rejectPaths = Collections.emptySet();
 
     public UndertowJS(List<ResourceSet> resources, boolean hotDeployment, ClassLoader classLoader, Map<String, InjectionProvider> injectionProviders, List<HandlerWrapper> handlerWrappers, ResourceManager resourceManager) {
         this.classLoader = classLoader;
@@ -109,9 +113,15 @@ public class UndertowJS {
         engine.put(ScriptEngine.FILENAME, "undertow-core-scripts.js");
         engine.eval(FileUtils.readFile(UndertowJS.class, "undertow-core-scripts.js"));
         Map<Resource, Date> lm = new HashMap<>();
+        final Set<String> rejectPaths = new HashSet<>();
         for (ResourceSet set : resources) {
 
             for (String resource : set.getResources()) {
+                if(resource.startsWith("/")) {
+                    rejectPaths.add(resource);
+                } else {
+                    rejectPaths.add("/" + resource);
+                }
                 Resource res = set.getResourceManager().getResource(resource);
                 if (res == null) {
                     UndertowScriptLogger.ROOT_LOGGER.couldNotReadResource(resource);
@@ -129,6 +139,7 @@ public class UndertowJS {
         this.engine = engine;
         this.routingHandler = routingHandler;
         this.lastModified = lm;
+        this.rejectPaths = Collections.unmodifiableSet(rejectPaths);
     }
 
     public UndertowJS stop() {
@@ -161,7 +172,11 @@ public class UndertowJS {
                         }
                     }
                 }
-
+                if(rejectPaths.contains(exchange.getRelativePath())) {
+                    exchange.setResponseCode(StatusCodes.NOT_FOUND);
+                    exchange.endExchange();
+                    return;
+                }
                 exchange.putAttachment(NEXT, next);
                 routingHandler.handleRequest(exchange);
             }

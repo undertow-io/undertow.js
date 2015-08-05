@@ -24,6 +24,7 @@ import io.undertow.server.HandlerWrapper;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.resource.ClassPathResourceManager;
+import io.undertow.server.handlers.resource.ResourceHandler;
 import io.undertow.testutils.DefaultServer;
 import io.undertow.testutils.HttpClientUtils;
 import io.undertow.testutils.TestHttpClient;
@@ -71,19 +72,19 @@ public class SimpleJavascriptTestCase {
                 .addResources(res, "test.js")
                 .setResourceManager(res).build();
         js.start();
-        DefaultServer.setRootHandler(js.getHandler(new HttpHandler() {
+        DefaultServer.setRootHandler(js.getHandler(new ResourceHandler(res, new HttpHandler() {
             @Override
             public void handleRequest(HttpServerExchange exchange) throws Exception {
                 exchange.getResponseSender().send("Default Response");
             }
-        }));
+        })));
     }
 
     @Test
     public void testDefaultResponse() throws IOException {
         final TestHttpClient client = new TestHttpClient();
         try {
-            HttpGet get = new HttpGet(DefaultServer.getDefaultServerURL() + "/");
+            HttpGet get = new HttpGet(DefaultServer.getDefaultServerURL() + "/foo");
             HttpResponse result = client.execute(get);
             Assert.assertEquals(StatusCodes.OK, result.getStatusLine().getStatusCode());
             Assert.assertEquals("Default Response", HttpClientUtils.readResponse(result));
@@ -237,6 +238,18 @@ public class SimpleJavascriptTestCase {
         }
     }
 
+    @Test
+    public void testCannotDownloadScript() throws IOException {
+        final TestHttpClient client = new TestHttpClient();
+        try {
+            HttpGet get = new HttpGet(DefaultServer.getDefaultServerURL() + "/test.js");
+            HttpResponse result = client.execute(get);
+            Assert.assertEquals(StatusCodes.NOT_FOUND, result.getStatusLine().getStatusCode());
+            HttpClientUtils.readResponse(result);
+        } finally {
+            client.getConnectionManager().shutdown();
+        }
+    }
 
     @Test
     public void testFormParsing() throws IOException {
