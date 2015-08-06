@@ -51,8 +51,10 @@ var $undertow = {
 
     },
 
-    templateType: "mustache",
-    templateContentType: "text/html; charset=UTF-8",
+    defaultParams: {
+        templateType: "mustache",
+        headers: {'Content-Type': "text/html; charset=UTF-8"}
+    },
 
     injection_wrappers: [
         /**
@@ -360,12 +362,22 @@ var $undertow = {
      * @returns {*} a HttpHandler implementation that can be registered with Undertow
      * @private
      */
-    _create_handler_function: function (userHandler, args) {
+    _create_handler_function: function (userHandler, userArgs) {
         if (userHandler == null) {
             throw "handler function cannot be null";
         }
         var handler = userHandler;
         var params = [];
+        var args = {};
+        for(var i in userArgs) {
+            args[i] = userArgs[i];
+        }
+        for(var i in $undertow.defaultParams) {
+            if(args[i] == null) {
+                args[i] = $undertow.defaultParams[i];
+            }
+        }
+
         if (userHandler.constructor === Array) {
             handler = userHandler[userHandler.length - 1];
             for (var i = 0; i < userHandler.length - 1; ++i) {
@@ -380,7 +392,7 @@ var $undertow = {
             headers = {};
         }
         if(template != null) {
-            var templateProvider = $undertow._java.Templates.loadTemplateProvider($undertow_support.classLoader, $undertow.templateType);
+            var templateProvider = $undertow._java.Templates.loadTemplateProvider($undertow_support.classLoader, args['templateType']);
             templateProvider.init({});
             templateInstance = templateProvider.compile($undertow._java.Templates.loadTemplate(template, $undertow_support.resourceManager));
             if(headers['Content-Type'] == null) {
