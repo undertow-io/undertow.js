@@ -151,6 +151,12 @@ var $undertow = {
             }
             return ret;
         };
+
+        this.session = function (create) {
+            create = create == null ? true : create;
+            var src = this.$underlying.getAttachment($undertow._java.ServletRequestContext.ATTACHMENT_KEY);
+            return src.getOriginalRequest().getSession(create);
+        }
     },
 
     JDBCWrapper: function ($underlying) {
@@ -382,7 +388,7 @@ var $undertow = {
         }
         for(var i in args) {
             if(!$undertow._allowed_arguments[i]) {
-                throw "Unkown property " + i;
+                throw "Unknown property " + i;
             }
         }
 
