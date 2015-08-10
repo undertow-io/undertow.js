@@ -106,7 +106,7 @@ public class JavascriptJDBCWrapperTestCase {
             post.setEntity(new StringEntity("{\"first\": \"John\", \"last\": \"Doe\"}"));
             HttpResponse result = client.execute(post);
             Assert.assertEquals(StatusCodes.OK, result.getStatusLine().getStatusCode());
-            HttpClientUtils.readResponse(result);
+            Assert.assertEquals("1", HttpClientUtils.readResponse(result));
 
             HttpGet get = new HttpGet(DefaultServer.getDefaultServerURL() + "/customers");
             result = client.execute(get);
@@ -132,7 +132,7 @@ public class JavascriptJDBCWrapperTestCase {
             put.setEntity(new StringEntity("{\"first\": \"John\", \"last\": \"Smith\"}"));
             result = client.execute(put);
             Assert.assertEquals(StatusCodes.OK, result.getStatusLine().getStatusCode());
-            HttpClientUtils.readResponse(result);
+            Assert.assertEquals("1", HttpClientUtils.readResponse(result));
 
 
             get = new HttpGet(DefaultServer.getDefaultServerURL() + "/customers/" + id);
@@ -149,7 +149,7 @@ public class JavascriptJDBCWrapperTestCase {
             HttpDelete delete = new HttpDelete(DefaultServer.getDefaultServerURL() + "/customers/" + id);
             result = client.execute(delete);
             Assert.assertEquals(StatusCodes.OK, result.getStatusLine().getStatusCode());
-            HttpClientUtils.readResponse(result);
+            Assert.assertEquals("1", HttpClientUtils.readResponse(result));
 
             get = new HttpGet(DefaultServer.getDefaultServerURL() + "/customers/" + id);
             result = client.execute(get);

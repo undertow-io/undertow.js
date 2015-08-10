@@ -19,13 +19,13 @@
 $undertow
     .alias("db", "db:test")
     .onPost("/customers",['db', '$entity:json', function ($exchange, db, customer) {
-        db.query("insert into customer(first, last) values (?, ?)", customer.first, customer.last);
+        return db.query("insert into customer(first, last) values (?, ?)", customer.first, customer.last);
     }])
     .onPut("/customers/{id}",['db', '$entity:json', function ($exchange, db, customer) {
-        db.query("update customer set first=?, last=? where id=?", customer['first'], customer['last'], $exchange.param('id'));
+        return db.query("update customer set first=?, last=? where id=?", customer['first'], customer['last'], $exchange.param('id'));
     }])
     .onDelete("/customers/{id}",['db', function ($exchange, db) {
-        db.query("delete from customer where id=?", $exchange.param('id'));
+        return db.query("delete from customer where id=?", $exchange.param('id'));
     }])
     .onGet("/customers/{id}",['db', function ($exchange, db) {
         var customer = db.selectOne("select * from customer where id=?", $exchange.param('id'));

@@ -236,80 +236,80 @@ var $undertow = {
         this.query = function () {
             var conn = null;
             var statement = null;
-                conn = $underlying.getConnection();
-                statement = conn.prepareStatement(arguments[0]);
-                for (var i = 1; i < arguments.length; ++i) {
-                    statement.setObject(i, arguments[i]);
-                }
-                statement.execute();
+            conn = $underlying.getConnection();
+            statement = conn.prepareStatement(arguments[0]);
+            for (var i = 1; i < arguments.length; ++i) {
+                statement.setObject(i, arguments[i]);
+            }
+            return statement.executeUpdate();
         }
 
         this._select = function (args) {
             var conn = null;
             var statement = null;
             var rs = null;
-                conn = $underlying.getConnection();
-                statement = conn.prepareStatement(args[0]);
-                for (var i = 1; i < args.length; ++i) {
-                    statement.setObject(i, args[i]);
-                }
+            conn = $underlying.getConnection();
+            statement = conn.prepareStatement(args[0]);
+            for (var i = 1; i < args.length; ++i) {
+                statement.setObject(i, args[i]);
+            }
 
-                rs = statement.executeQuery();
-                var ret = [];
-                var md = rs.getMetaData();
-                var columnCount = md.getColumnCount();
-                var types = {};
-                var names = {};
-                for (var i = 1; i <= columnCount; ++i) {
-                    types[i] = md.getColumnClassName(i);
-                    names[i] = md.getColumnName(i);
-                }
-                while (rs.next()) {
-                    var rec = {};
-                    for (var j = 1; j <= columnCount; ++j) {
-                        var name = names[j];
-                        var type = types[j];
-                        switch (type) {
-                            case "java.lang.String":
-                                rec[name] = rs.getString(j);
-                                break;
-                            case "java.lang.Integer":
-                                rec[name] = rs.getInt(j);
-                                break;
-                            case "java.lang.Double":
-                                rec[name] = rs.getDouble(j);
-                                break;
-                            case "java.lang.Float":
-                                rec[name] = rs.getFloat(j);
-                                break;
-                            case "java.lang.Boolean":
-                                rec[name] = rs.getBoolean(j);
-                                break;
-                            case "java.lang.Long":
-                                rec[name] = rs.getLong(j);
-                                break;
-                            case "java.lang.Short":
-                                rec[name] = rs.getShort(j);
-                                break;
-                            case "java.lang.Byte":
-                                rec[name] = rs.getByte(j);
-                                break;
-                            case "java.sql.Date":
-                                rec[name] = rs.getDate(j);
-                                break;
-                            case "java.sql.Time":
-                                rec[name] = rs.getTime(j);
-                                break;
-                            default :
-                                rec[name] = rs.getString(j);
-                        }
+            rs = statement.executeQuery();
+            var ret = [];
+            var md = rs.getMetaData();
+            var columnCount = md.getColumnCount();
+            var types = {};
+            var names = {};
+            for (var i = 1; i <= columnCount; ++i) {
+                types[i] = md.getColumnClassName(i);
+                names[i] = md.getColumnName(i);
+            }
+            while (rs.next()) {
+                var rec = {};
+                for (var j = 1; j <= columnCount; ++j) {
+                    var name = names[j];
+                    var type = types[j];
+                    switch (type) {
+                        case "java.lang.String":
+                            rec[name] = rs.getString(j);
+                            break;
+                        case "java.lang.Integer":
+                            rec[name] = rs.getInt(j);
+                            break;
+                        case "java.lang.Double":
+                            rec[name] = rs.getDouble(j);
+                            break;
+                        case "java.lang.Float":
+                            rec[name] = rs.getFloat(j);
+                            break;
+                        case "java.lang.Boolean":
+                            rec[name] = rs.getBoolean(j);
+                            break;
+                        case "java.lang.Long":
+                            rec[name] = rs.getLong(j);
+                            break;
+                        case "java.lang.Short":
+                            rec[name] = rs.getShort(j);
+                            break;
+                        case "java.lang.Byte":
+                            rec[name] = rs.getByte(j);
+                            break;
+                        case "java.sql.Date":
+                            rec[name] = rs.getDate(j);
+                            break;
+                        case "java.sql.Time":
+                            rec[name] = rs.getTime(j);
+                            break;
+                        default :
+                            rec[name] = rs.getString(j);
                     }
-                    ret.push(rec)
                 }
-                rs.close();
-                statement.close();
-                conn.close();
-                return ret;
+                ret.push(rec)
+            }
+            rs.close();
+            statement.close();
+            conn.close();
+            return ret;
         };
 
         /**
