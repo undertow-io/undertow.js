@@ -39,8 +39,8 @@ var $undertow = {
 
     _allowed_arguments: {'template': true, 'template_type': true, 'headers': true, 'predicate': true, 'roles_allowed': true},
 
-    injection_aliases: {},
-    entity_parsers: {
+    _injection_aliases: {},
+    _entity_parsers: {
         string: function (data) {
             return data;
         },
@@ -311,6 +311,10 @@ var $undertow = {
                 conn.close();
                 return ret;
         };
+
+        /**
+         *
+         */
         this.select = function () {
             return this._select(Array.prototype.slice.call(arguments));
         }
@@ -339,7 +343,7 @@ var $undertow = {
         if (index < 0) {
             //no prefix, it has to be an alias
             //we just use the alias function directly
-            return $undertow.injection_aliases[p];
+            return $undertow._injection_aliases[p];
         } else {
             var prefix = p.substr(0, index);
             var suffix = p.substr(index + 1);
@@ -397,7 +401,7 @@ var $undertow = {
                         if (suffix == null) {
                             return data;
                         } else {
-                            var parser = $undertow.entity_parsers[suffix];
+                            var parser = $undertow._entity_parsers[suffix];
                             if (parser == null) {
                                 return data;
                             } else {
@@ -694,7 +698,7 @@ var $undertow = {
     },
 
     alias: function (alias, injection) {
-        $undertow.injection_aliases[alias] = $undertow._create_injection_function(injection);
+        $undertow._injection_aliases[alias] = $undertow._create_injection_function(injection);
         return $undertow;
     },
 
