@@ -82,26 +82,47 @@ var $undertow = {
 
         this.$underlying = underlyingExchange;
 
+        /**
+         * Sets or gets a request header
+         *
+         *
+         * @param name The header name
+         * @param value The header value to set. If this is null the current request header is returned
+         * @returns {*} The specified request header
+         */
         this.requestHeaders = function (name, value) {
             if (arguments.length >= 2) {
                 underlyingExchange.requestHeaders.put(new $undertow._java.HttpString(name), value);
             } else if (arguments.length == 1) {
                 return underlyingExchange.requestHeaders.getFirst(name);
             } else {
-                //TODO: return some kind of headers object
+                return underlyingExchange.requestHeaders;
             }
         };
 
-        this.responseHeaders = function () {
+        /**
+         * Sets or gets a response header
+         *
+         *
+         * @param name The header name
+         * @param value The header value to set. If this is null the current request header is returned
+         * @returns {*} The specified request header
+         */
+        this.responseHeaders = function (name, value) {
             if (arguments.length >= 2) {
-                underlyingExchange.responseHeaders.put(new $undertow._java.HttpString(arguments[0]), arguments[1]);
+                underlyingExchange.responseHeaders.put(new $undertow._java.HttpString(name), value);
             } else if (arguments.length == 1) {
-                return underlyingExchange.responseHeaders.getFirst(arguments[1]);
+                return underlyingExchange.responseHeaders.getFirst(name);
             } else {
-                //TODO: return some kind of headers object
+                return underlyingExchange.responseHeaders;
             }
         };
 
+        /**
+         * Sends a response. If a number is given as the first parameter this is used as the response code.
+         *
+         * If the given response is a string it will be sent directly, otherwise it will be converted into JSON.
+         */
         this.send = function () {
             var toSend = "";
             if(arguments.length == 1) {
@@ -110,15 +131,29 @@ var $undertow = {
                 toSend = arguments[1];
                 this.status(arguments[0]);
             }
-            underlyingExchange.responseSender.send(toSend);
+            if(typeof toSend == 'string') {
+                underlyingExchange.responseSender.send(toSend);
+            } else {
+                underlyingExchange.responseSender.send(JSON.stringify(result));
+            }
         };
 
+        /**
+         * Redirects to a specific location
+         *
+         * @param location The location to redirect to
+         */
         this.sendRedirect = function (location) {
             this.responseHeaders("Location", location);
             this.status(302);
             this.endExchange();
         };
 
+        /**
+         * Sets of gets the current response code
+         *
+         * @returns {*} The current response code
+         */
         this.status = function () {
             if (arguments.length > 0) {
                 underlyingExchange.setResponseCode(arguments[0]);
@@ -131,6 +166,12 @@ var $undertow = {
             underlyingExchange.endExchange();
         };
 
+        /**
+         * Gets a query parameter
+         *
+         * @param name The query parameter name
+         * @returns {*} the query parameter
+         */
         this.param = function (name) {
             var paramList = underlyingExchange.queryParameters.get(name);
             if (paramList == null) {
@@ -139,6 +180,12 @@ var $undertow = {
             return paramList.getFirst();
         };
 
+        /**
+         * Gets a list of query parameters
+         *
+         * @param name The parameter name
+         * @returns {*} A list of query parameters
+         */
         this.params = function (name) {
             var params = underlyingExchange.queryParameters.get(name);
             if (params == null) {
@@ -152,10 +199,34 @@ var $undertow = {
             return ret;
         };
 
+        /**
+         * Returns the underlying session object.
+         *
+         * @param create If the session should be created if it does not exist. Defaults to true
+         * @returns {*} The session object
+         */
         this.session = function (create) {
             create = create == null ? true : create;
             var src = this.$underlying.getAttachment($undertow._java.ServletRequestContext.ATTACHMENT_KEY);
             return src.getOriginalRequest().getSession(create);
+        }
+
+        /**
+         *
+         * @returns {*} the servlet request
+         */
+        this.request = function() {
+            var src = this.$underlying.getAttachment($undertow._java.ServletRequestContext.ATTACHMENT_KEY);
+            return src.getOriginalRequest();
+        }
+
+        /**
+         *
+         * @returns {*} the servlet response
+         */
+        this.response = function() {
+            var src = this.$underlying.getAttachment($undertow._java.ServletRequestContext.ATTACHMENT_KEY);
+            return src.getOriginalResponse();
         }
     },
 
