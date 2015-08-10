@@ -33,8 +33,11 @@ var $undertow = {
         FormDataParser: Java.type("io.undertow.server.handlers.form.FormDataParser"),
         Templates: Java.type("io.undertow.js.templates.Templates"),
         HashMap: Java.type("java.util.HashMap"),
-        LinkedList: Java.type("java.util.LinkedList")
+        LinkedList: Java.type("java.util.LinkedList"),
+        ServletRequestContext: Java.type("io.undertow.servlet.handlers.ServletRequestContext")
     },
+
+    _allowed_arguments: {'template': true, 'template_type': true, 'headers': true, 'predicate': true, 'roles_allowed': true},
 
     injection_aliases: {},
     entity_parsers: {
@@ -51,8 +54,8 @@ var $undertow = {
 
     },
 
-    defaultParams: {
-        templateType: "mustache",
+    default_params: {
+        template_type: "mustache",
         headers: {'Content-Type': "text/html; charset=UTF-8"}
     },
 
@@ -372,9 +375,14 @@ var $undertow = {
         for(var i in userArgs) {
             args[i] = userArgs[i];
         }
-        for(var i in $undertow.defaultParams) {
+        for(var i in $undertow.default_params) {
             if(args[i] == null) {
-                args[i] = $undertow.defaultParams[i];
+                args[i] = $undertow.default_params[i];
+            }
+        }
+        for(var i in args) {
+            if(!$undertow._allowed_arguments[i]) {
+                throw "Unkown property " + i;
             }
         }
 
@@ -392,15 +400,17 @@ var $undertow = {
             headers = {};
         }
         if(template != null) {
-            var templateProvider = $undertow._java.Templates.loadTemplateProvider($undertow_support.classLoader, args['templateType']);
+            var templateProvider = $undertow._java.Templates.loadTemplateProvider($undertow_support.classLoader, args['template_type']);
             templateProvider.init({});
             templateInstance = templateProvider.compile($undertow._java.Templates.loadTemplate(template, $undertow_support.resourceManager));
             if(headers['Content-Type'] == null) {
                 headers['Content-Type'] = $undertow.templateContentType;
             }
         }
-
-
+        var roles = args['roles_allowed'];
+        if(roles != null && !(roles.constructor === Array)) {
+            roles = [roles];
+        }
 
         var httpHandler = new $undertow._java.HttpHandler({
             handleRequest: function (underlyingExchange) {
@@ -408,8 +418,39 @@ var $undertow = {
                     underlyingExchange.dispatch(httpHandler);
                     return;
                 }
-
                 var $exchange = new $undertow.Exchange(underlyingExchange);
+
+                if(roles != null && roles.length > 0) {
+                    var sc = underlyingExchange.getSecurityContext();
+                    sc.setAuthenticationRequired();
+                    if(!sc.authenticated) {
+                        if(!sc.authenticate()) {
+                            underlyingExchange.endExchange();
+                            return;
+                        }
+                    }
+                    var account = sc.authenticatedAccount;
+                    if(account == null) {
+
+                    }
+                    var ok = false;
+                    for(var i in roles) {
+                        var role = roles[i];
+                        if(role == '**') {
+                            ok = true;
+                            break;
+                        } else if(account.roles.contains(role)) {
+                            ok = true;
+                            break;
+                        }
+                    }
+                    if(!ok) {
+                        var src = underlyingExchange.getAttachment($undertow._java.ServletRequestContext.ATTACHMENT_KEY);
+                        src.originalResponse.sendError(403);
+                        return;
+                    }
+
+                }
 
                 for(var k in headers) {
                     $exchange.responseHeaders(k, headers[k]);
