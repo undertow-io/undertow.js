@@ -19,8 +19,11 @@
 $undertow
     .websocket("/websocket1", function (connection) {
         connection.send("connected");
-        connection.onMessage = function(message) {
+        connection.onText = function(message) {
             return "echo-" + message;
+        }
+        connection.onBinary = function(message) {
+            return message;
         }
         connection.onClose = function (message) {
             print(message.reason + " " + message.code);

@@ -37,7 +37,8 @@ var $undertow = {
         ServletRequestContext: Java.type("io.undertow.servlet.handlers.ServletRequestContext"),
         WebSockets: Java.type("io.undertow.websockets.core.WebSockets"),
         WebSocketConnectionCallback: Java.type("io.undertow.websockets.WebSocketConnectionCallback"),
-        AbstractReceiveListener: Java.type("io.undertow.websockets.core.AbstractReceiveListener")
+        AbstractReceiveListener: Java.type("io.undertow.websockets.core.AbstractReceiveListener"),
+        ByteBuffer: Java.type("java.nio.ByteBuffer")
     },
 
     _allowed_arguments: {'template': true, 'template_type': true, 'headers': true, 'predicate': true, 'roles_allowed': true},
@@ -339,20 +340,62 @@ var $undertow = {
         var $con = this;
 
         this.send = function(message) {
-            $undertow._java.WebSockets.sendText(message, this.$underlying, null);
+            if(message.constructor == ArrayBuffer) {
+                var view = new Uint8Array(message);
+                var buf = $undertow._java.ByteBuffer.allocate(view.length);
+                for(var i = 0; i < view.length; ++i) {
+                    buf.put(view[i]);
+                }
+                buf.flip();
+                $undertow._java.WebSockets.sendBinary(buf, this.$underlying, null);
+
+            } else if(typeof  message == 'string') {
+                $undertow._java.WebSockets.sendText(message, this.$underlying, null);
+            } else {
+                $con.send(JSON.stringify(message));
+            }
         };
 
-        this.onMessage = null;
+        this.onText = null;
+        this.onBinary = null;
         this.onClose = null;
         this.onError = null;
 
         underlying.getReceiveSetter().set(new $undertow._java.AbstractReceiveListener() {
             onFullTextMessage: function(channel, message) {
-                if($con.onMessage != null) {
-                    var ret = $con.onMessage(message.getData());
+                if($con.onText != null) {
+                    var ret = $con.onText(message.getData());
                     if(ret != null) {
                         $con.send(ret);
                     }
+                }
+            },
+            onFullBinaryMessage: function(channel, message) {
+
+                var data = message.getData();
+                var resource = data.getResource();
+                try {
+                    if ($con.onBinary != null) {
+                        var count = 0;
+                        for(var i = 0; i < resource.length; ++ i) {
+                            count += resource[i].remaining();
+                        }
+                        var buf = new ArrayBuffer(count);
+                        var view = new Uint8Array(buf);
+                        count = 0;
+                        for(var i = 0; i < resource.length; ++ i) {
+                            while(resource[i].hasRemaining()) {
+                                view[count++] = resource[i].get();
+                            }
+                        }
+
+                        var ret = $con.onBinary(buf);
+                        if (ret != null) {
+                            $con.send(ret);
+                        }
+                    }
+                } finally {
+                    data.free();
                 }
             },
 

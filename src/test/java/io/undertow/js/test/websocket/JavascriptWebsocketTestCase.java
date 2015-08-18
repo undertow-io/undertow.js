@@ -38,6 +38,7 @@ import javax.websocket.Endpoint;
 import javax.websocket.OnMessage;
 import javax.websocket.Session;
 import java.net.URI;
+import java.nio.ByteBuffer;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 
@@ -48,6 +49,8 @@ import java.util.concurrent.TimeUnit;
 public class JavascriptWebsocketTestCase {
 
     private static final LinkedBlockingDeque<String> messages = new LinkedBlockingDeque<>();
+    private static final LinkedBlockingDeque<byte[]> binaryMessages = new LinkedBlockingDeque<>();
+
 
     static UndertowJS js;
 
@@ -79,6 +82,13 @@ public class JavascriptWebsocketTestCase {
         Assert.assertEquals("connected", messages.poll(5, TimeUnit.SECONDS));
         session.getBasicRemote().sendText("test1");
         Assert.assertEquals("echo-test1", messages.poll(5, TimeUnit.SECONDS));
+
+        byte[] data = new byte[1000];
+        for(int i = 0; i < 100; ++i) {
+            data[i] = (byte)i;
+        }
+        session.getBasicRemote().sendBinary(ByteBuffer.wrap(data));
+        Assert.assertArrayEquals(data, binaryMessages.poll(5, TimeUnit.SECONDS));
         session.close(new CloseReason(CloseReason.CloseCodes.GOING_AWAY, "foo"));
     }
 
@@ -88,6 +98,11 @@ public class JavascriptWebsocketTestCase {
         @OnMessage
         public void message(String message) {
             messages.add(message);
+        }
+
+        @OnMessage
+        public void message(byte[] message) {
+            binaryMessages.add(message);
         }
 
     }
