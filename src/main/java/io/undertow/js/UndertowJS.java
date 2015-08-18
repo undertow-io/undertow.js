@@ -27,7 +27,10 @@ import io.undertow.server.handlers.resource.ResourceChangeListener;
 import io.undertow.server.handlers.resource.ResourceManager;
 import io.undertow.util.AttachmentKey;
 import io.undertow.util.FileUtils;
+import io.undertow.util.Methods;
 import io.undertow.util.StatusCodes;
+import io.undertow.websockets.WebSocketConnectionCallback;
+import io.undertow.websockets.WebSocketProtocolHandshakeHandler;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -72,7 +75,7 @@ public class UndertowJS {
 
 
     private ScriptEngine engine;
-    private RoutingHandler routingHandler;
+    private HttpHandler routingHandler;
     private Map<Resource, Date> lastModified;
     private volatile long lastHotDeploymentCheck = -1;
     private volatile Set<String> rejectPaths = Collections.emptySet();
@@ -99,6 +102,7 @@ public class UndertowJS {
         ScriptEngineManager factory = new ScriptEngineManager();
         ScriptEngine engine = factory.getEngineByName("JavaScript");
 
+
         RoutingHandler routingHandler = new RoutingHandler(true);
         routingHandler.setFallbackHandler(new HttpHandler() {
             @Override
@@ -106,9 +110,11 @@ public class UndertowJS {
                 exchange.getAttachment(NEXT).handleRequest(exchange);
             }
         });
+        RoutingHandler wsRoutingHandler = new RoutingHandler(false);
+        wsRoutingHandler.setFallbackHandler(routingHandler);
 
 
-        UndertowSupport support = new UndertowSupport(routingHandler, classLoader, injectionProviders, javabeanIntrospector, handlerWrappers, resourceManager);
+        UndertowSupport support = new UndertowSupport(routingHandler, classLoader, injectionProviders, javabeanIntrospector, handlerWrappers, resourceManager, wsRoutingHandler);
         engine.put("$undertow_support", support);
         engine.put(ScriptEngine.FILENAME, "undertow-core-scripts.js");
         engine.eval(FileUtils.readFile(UndertowJS.class, "undertow-core-scripts.js"));
@@ -137,7 +143,7 @@ public class UndertowJS {
             }
         }
         this.engine = engine;
-        this.routingHandler = routingHandler;
+        this.routingHandler = wsRoutingHandler;
         this.lastModified = lm;
         this.rejectPaths = Collections.unmodifiableSet(rejectPaths);
     }
@@ -346,14 +352,16 @@ public class UndertowJS {
         private final JavabeanIntrospector javabeanIntrospector;
         private final List<HandlerWrapper> handlerWrappers;
         private final ResourceManager resourceManager;
+        private final RoutingHandler wsRoutingHandler;
 
-        public UndertowSupport(RoutingHandler routingHandler, ClassLoader classLoader, Map<String, InjectionProvider> injectionProviders, JavabeanIntrospector javabeanIntrospector, List<HandlerWrapper> handlerWrappers, ResourceManager resourceManager) {
+        public UndertowSupport(RoutingHandler routingHandler, ClassLoader classLoader, Map<String, InjectionProvider> injectionProviders, JavabeanIntrospector javabeanIntrospector, List<HandlerWrapper> handlerWrappers, ResourceManager resourceManager, RoutingHandler wsRoutingHandler) {
             this.routingHandler = routingHandler;
             this.classLoader = classLoader;
             this.injectionProviders = injectionProviders;
             this.javabeanIntrospector = javabeanIntrospector;
             this.handlerWrappers = handlerWrappers;
             this.resourceManager = resourceManager;
+            this.wsRoutingHandler = wsRoutingHandler;
         }
 
         public ClassLoader getClassLoader() {
@@ -378,6 +386,10 @@ public class UndertowJS {
 
         public ResourceManager getResourceManager() {
             return resourceManager;
+        }
+
+        public void addWebsocket(String path, WebSocketConnectionCallback callback) {
+            wsRoutingHandler.add(Methods.GET, path, new WebSocketProtocolHandshakeHandler(callback, routingHandler));
         }
     }
 

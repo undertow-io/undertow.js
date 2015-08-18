@@ -34,7 +34,10 @@ var $undertow = {
         Templates: Java.type("io.undertow.js.templates.Templates"),
         HashMap: Java.type("java.util.HashMap"),
         LinkedList: Java.type("java.util.LinkedList"),
-        ServletRequestContext: Java.type("io.undertow.servlet.handlers.ServletRequestContext")
+        ServletRequestContext: Java.type("io.undertow.servlet.handlers.ServletRequestContext"),
+        WebSockets: Java.type("io.undertow.websockets.core.WebSockets"),
+        WebSocketConnectionCallback: Java.type("io.undertow.websockets.WebSocketConnectionCallback"),
+        AbstractReceiveListener: Java.type("io.undertow.websockets.core.AbstractReceiveListener")
     },
 
     _allowed_arguments: {'template': true, 'template_type': true, 'headers': true, 'predicate': true, 'roles_allowed': true},
@@ -331,6 +334,44 @@ var $undertow = {
         }
     },
 
+    WebSocketConnection: function(underlying) {
+        this.$underlying = underlying;
+        var $con = this;
+
+        this.send = function(message) {
+            $undertow._java.WebSockets.sendText(message, this.$underlying, null);
+        };
+
+        this.onMessage = null;
+        this.onClose = null;
+        this.onError = null;
+
+        underlying.getReceiveSetter().set(new $undertow._java.AbstractReceiveListener() {
+            onFullTextMessage: function(channel, message) {
+                if($con.onMessage != null) {
+                    var ret = $con.onMessage(message.getData());
+                    if(ret != null) {
+                        $con.send(ret);
+                    }
+                }
+            },
+
+            onError: function(channel, error) {
+                if($con.onError != null) {
+                    $con.onError(error);
+                }
+            },
+
+            onCloseMessage: function(msg, wsChannel) {
+                if($con.onClose != null) {
+                    $con.onClose(msg);
+                }
+            }
+        });
+
+        underlying.resumeReceives();
+
+    },
     /**
      * Create an injection function from a given injection string
      *
@@ -616,6 +657,15 @@ var $undertow = {
         }
         $undertow.onRequest.apply(null, args);
         return $undertow;
+    },
+
+    websocket: function(route, handler) {
+        $undertow_support.addWebsocket(route, new $undertow._java.WebSocketConnectionCallback() {
+            onConnect: function (exchange, channel) {
+                var con = new $undertow.WebSocketConnection(channel);
+                handler(con);
+            }
+        });
     },
 
     onRequest: function (method, route) {
