@@ -1,1 +1,2 @@
 io.undertow.js.templates.mustache.MustacheTemplateProvider
+io.undertow.js.templates.freemarker.FreemarkerTemplateProvider

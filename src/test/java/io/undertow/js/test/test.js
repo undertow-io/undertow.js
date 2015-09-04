@@ -57,11 +57,5 @@ $undertow
     })
     .onPost("/testForm1", ['$entity:form', function($exchange, form) {
         return JSON.stringify(form);
-    }])
-    .onGet("/testTemplate1", "template1.txt", function($exchange) {
-        return {data: "Some Data"};
-    })
-    .onGet("/testTemplate2", {template: "template2.txt", headers: {'Content-Type': "text/plain; charset=UTF-8", 'foo': 'bar'}}, function($exchange) {
-        return {data: "Some Data", loop: [{foo:'a1', bar: 'b1'}, {foo:'a2', bar: 'b2'}]};
-    });
+    }]);
 

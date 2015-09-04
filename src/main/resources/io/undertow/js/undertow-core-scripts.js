@@ -63,6 +63,14 @@ var $undertow = {
         headers: {'Content-Type': "text/html; charset=UTF-8"}
     },
 
+    setDefault: function (name, value) {
+        if(!$undertow._allowed_arguments[name]) {
+            throw "Unknown property " + i;
+        }
+        $undertow.default_params[name] = value;
+        return $undertow;
+    },
+
     injection_wrappers: [
         /**
          * JDBC wrapper function. Wraps injected datasources with our JS friendly database API
@@ -567,7 +575,7 @@ var $undertow = {
         if(template != null) {
             var templateProvider = $undertow._java.Templates.loadTemplateProvider($undertow_support.classLoader, args['template_type']);
             templateProvider.init({});
-            templateInstance = templateProvider.compile($undertow._java.Templates.loadTemplate(template, $undertow_support.resourceManager));
+            templateInstance = templateProvider.compile(template, $undertow._java.Templates.loadTemplate(template, $undertow_support.resourceManager));
             if(headers['Content-Type'] == null) {
                 headers['Content-Type'] = $undertow.templateContentType;
             }

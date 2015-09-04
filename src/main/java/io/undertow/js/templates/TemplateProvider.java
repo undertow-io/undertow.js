@@ -13,7 +13,7 @@ public interface TemplateProvider extends Closeable, AutoCloseable {
 
     void init(Map<String, String> properties);
 
-    Template compile(String template);
+    Template compile(String templateName, String templateContents);
 
     void close();
 }

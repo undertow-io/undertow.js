@@ -29,10 +29,9 @@ public class MustacheTemplateProvider implements TemplateProvider {
     }
 
     @Override
-    public Template compile(String template) {
-        Writer writer = new OutputStreamWriter(System.out);
+    public Template compile(String templateName, String template) {
         MustacheFactory mf = new DefaultMustacheFactory();
-        final Mustache mustache = mf.compile(new StringReader(template), "example");
+        final Mustache mustache = mf.compile(new StringReader(template), templateName);
 
         return new Template() {
             @Override

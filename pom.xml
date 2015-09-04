@@ -53,6 +53,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <maven.compiler.source>1.8</maven.compiler.source>
         <version.mustache>0.9.0</version.mustache>
+        <version.freemarker>2.3.23</version.freemarker>
     </properties>
 
     <dependencies>
@@ -103,6 +104,14 @@
             <groupId>com.github.spullara.mustache.java</groupId>
             <artifactId>compiler</artifactId>
             <version>${version.mustache}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.freemarker</groupId>
+            <artifactId>freemarker</artifactId>
+            <version>${version.freemarker}</version>
+            <optional>true</optional>
         </dependency>
         <!-- Test dependencies -->
 
