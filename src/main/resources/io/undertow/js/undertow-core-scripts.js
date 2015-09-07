@@ -41,7 +41,7 @@ var $undertow = {
         ByteBuffer: Java.type("java.nio.ByteBuffer")
     },
 
-    _allowed_arguments: {'template': true, 'template_type': true, 'headers': true, 'predicate': true, 'roles_allowed': true},
+    _allowed_arguments: {'template': true, 'template_type': true, 'headers': true, 'predicate': true, 'roles_allowed': true, 'transactional' : true},
 
     _injection_aliases: {},
     _entity_parsers: {
@@ -584,6 +584,7 @@ var $undertow = {
         if(roles != null && !(roles.constructor === Array)) {
             roles = [roles];
         }
+        var transactional = args['transactional'];
 
         var httpHandler = new $undertow._java.HttpHandler({
             handleRequest: function (underlyingExchange) {
@@ -604,7 +605,8 @@ var $undertow = {
                     }
                     var account = sc.authenticatedAccount;
                     if(account == null) {
-
+                        underlyingExchange.endExchange();
+                        return;
                     }
                     var ok = false;
                     for(var i in roles) {
@@ -628,18 +630,33 @@ var $undertow = {
                 for(var k in headers) {
                     $exchange.responseHeaders(k, headers[k]);
                 }
-                var paramList = [];
-                paramList.push($exchange);
-                $undertow._create_injected_parameter_list(params, paramList, $exchange);
-                var result = handler.apply(null, paramList);
-                if(result != null) {
-                    if (template != null) {
-                        $exchange.send(templateInstance.apply($undertow.toTemplateData(result)));
-                    } else if(typeof result == 'string') {
-                        $exchange.send(result);
-                    } else {
-                        $exchange.send(JSON.stringify(result));
+                var ut = null;
+                try {
+                    if(transactional) {
+                        ut = $undertow.resolve('jndi:java:comp/UserTransaction');
+                        ut.begin();
                     }
+                    var paramList = [];
+                    paramList.push($exchange);
+                    $undertow._create_injected_parameter_list(params, paramList, $exchange);
+                    var result = handler.apply(null, paramList);
+                    if(result != null) {
+                        if (template != null) {
+                            $exchange.send(templateInstance.apply($undertow.toTemplateData(result)));
+                        } else if(typeof result == 'string') {
+                            $exchange.send(result);
+                        } else {
+                            $exchange.send(JSON.stringify(result));
+                        }
+                    }
+                    if(ut != null) {
+                        ut.commit();
+                    }
+                } catch(e) {
+                    if(ut != null) {
+                        ut.rollback();
+                    }
+                    throw e;
                 }
             }
         });
