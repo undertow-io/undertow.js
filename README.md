@@ -13,6 +13,8 @@ cycle (especially when combined with the upcoming external resource support in W
 
 Note that this project requires JDK8, as it uses Nashorn as the script engine.
 
+Issues can be reported at https://issues.jboss.org/projects/UTJS
+
 Getting Started
 ---------------
 
