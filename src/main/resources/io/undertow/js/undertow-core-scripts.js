@@ -348,7 +348,9 @@ var $undertow = {
         var $con = this;
 
         this.send = function(message) {
-            if(message.constructor == ArrayBuffer) {
+            if(message == null) {
+                throw "Message was null";
+            } else if(message.constructor == ArrayBuffer) {
                 var view = new Uint8Array(message);
                 var buf = $undertow._java.ByteBuffer.allocate(view.length);
                 for(var i = 0; i < view.length; ++i) {
@@ -727,13 +729,26 @@ var $undertow = {
         return $undertow;
     },
 
-    websocket: function(route, handler) {
+    websocket: function(route, userHandler) {
+
+        var handler = userHandler;
+        var params = [];
+        if (userHandler.constructor === Array) {
+            handler = userHandler[userHandler.length - 1];
+            for (var i = 0; i < userHandler.length - 1; ++i) {
+                params.push($undertow._create_injection_function(userHandler[i]));
+            }
+        }
         $undertow_support.addWebsocket(route, new $undertow._java.WebSocketConnectionCallback() {
             onConnect: function (exchange, channel) {
                 var con = new $undertow.WebSocketConnection(channel);
-                handler(con);
+                var paramList = [];
+                paramList.push(con);
+                $undertow._create_injected_parameter_list(params, paramList, null);
+                handler.apply(null, paramList);
             }
         });
+        return $undertow;
     },
 
     onRequest: function (method, route) {
