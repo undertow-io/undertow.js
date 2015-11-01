@@ -28,4 +28,7 @@ $undertow
         connection.onClose = function (message) {
             print(message.reason + " " + message.code);
         }
-    });
+    })
+    .websocket("/websocket2", ["test:a test injection", function (connection, text) {
+        connection.send(text);
+    }]);

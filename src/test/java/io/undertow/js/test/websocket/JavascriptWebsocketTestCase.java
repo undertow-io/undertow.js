@@ -18,6 +18,7 @@
 
 package io.undertow.js.test.websocket;
 
+import io.undertow.js.InjectionProvider;
 import io.undertow.js.UndertowJS;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
@@ -59,6 +60,7 @@ public class JavascriptWebsocketTestCase {
 
         final ClassPathResourceManager res = new ClassPathResourceManager(JavascriptWebsocketTestCase.class.getClassLoader(), JavascriptWebsocketTestCase.class.getPackage());
         js = UndertowJS.builder()
+                .addInjectionProvider(new TestInjectionProvider())
                 .addResources(res, "websocket.js")
                 .setResourceManager(res).build();
         js.start();
@@ -92,6 +94,13 @@ public class JavascriptWebsocketTestCase {
         session.close(new CloseReason(CloseReason.CloseCodes.GOING_AWAY, "foo"));
     }
 
+    @Test
+    public void testWebsocketInjection() throws Exception {
+        Session session = ContainerProvider.getWebSocketContainer().connectToServer(ClientEndpointImpl.class, new URI("ws://" + DefaultServer.getHostAddress("default") + ":" + DefaultServer.getHostPort("default") + "/websocket2"));
+        Assert.assertEquals("INJECTED:a test injection", messages.poll(5, TimeUnit.SECONDS));
+
+        session.close(new CloseReason(CloseReason.CloseCodes.GOING_AWAY, "foo"));
+    }
     @ClientEndpoint
     private static class ClientEndpointImpl {
 
@@ -105,5 +114,17 @@ public class JavascriptWebsocketTestCase {
             binaryMessages.add(message);
         }
 
+    }
+    private static final class TestInjectionProvider implements InjectionProvider {
+
+        @Override
+        public Object getObject(String name) {
+            return "INJECTED:" + name;
+        }
+
+        @Override
+        public String getPrefix() {
+            return "test";
+        }
     }
 }
