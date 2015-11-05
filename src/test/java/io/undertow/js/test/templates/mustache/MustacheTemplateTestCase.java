@@ -18,7 +18,19 @@
 
 package io.undertow.js.test.templates.mustache;
 
+import java.io.IOException;
+
+import javax.script.ScriptException;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 import io.undertow.js.UndertowJS;
+import io.undertow.js.templates.mustache.MustacheTemplateProvider;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.resource.ClassPathResourceManager;
@@ -27,15 +39,6 @@ import io.undertow.testutils.DefaultServer;
 import io.undertow.testutils.HttpClientUtils;
 import io.undertow.testutils.TestHttpClient;
 import io.undertow.util.StatusCodes;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import javax.script.ScriptException;
-import java.io.IOException;
 
 /**
  * @author Stuart Douglas
@@ -48,8 +51,10 @@ public class MustacheTemplateTestCase {
 
         final ClassPathResourceManager res = new ClassPathResourceManager(MustacheTemplateTestCase.class.getClassLoader(), MustacheTemplateTestCase.class.getPackage());
         UndertowJS js = UndertowJS.builder()
+                .addTemplateProvider(new MustacheTemplateProvider())
                 .addResources(res, "mustache.js")
-                .setResourceManager(res).build();
+                .setResourceManager(res)
+                .build();
         js.start();
         DefaultServer.setRootHandler(js.getHandler(new ResourceHandler(res, new HttpHandler() {
             @Override

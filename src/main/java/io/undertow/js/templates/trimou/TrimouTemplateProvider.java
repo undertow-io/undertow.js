@@ -1,24 +1,48 @@
+/*
+ * JBoss, Home of Professional Open Source.
+ * Copyright 2015 Red Hat, Inc., and individual contributors
+ * as indicated by the @author tags.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package io.undertow.js.templates.trimou;
 
+import java.io.Reader;
+import java.io.StringReader;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 
-import org.trimou.Mustache;
 import org.trimou.engine.MustacheEngine;
 import org.trimou.engine.MustacheEngineBuilder;
 import org.trimou.engine.config.EngineConfigurationKey;
+import org.trimou.engine.locator.AbstractTemplateLocator;
 import org.trimou.handlebars.HelpersBuilder;
 
 import io.undertow.js.templates.Template;
 import io.undertow.js.templates.TemplateProvider;
+import io.undertow.js.templates.Templates;
+import io.undertow.server.handlers.resource.ResourceManager;
 
 /**
- * TODO Right now, a new provider is created for each handler. Maybe it would be better to cache provider instances.
  *
  * @author Martin Kouba
  */
 public class TrimouTemplateProvider implements TemplateProvider {
 
-    private MustacheEngine engine;
+    private volatile MustacheEngine engine;
+
+    private volatile ResourceManager resourceManager;
 
     @Override
     public String name() {
@@ -26,27 +50,48 @@ public class TrimouTemplateProvider implements TemplateProvider {
     }
 
     @Override
-    public void init(Map<String, String> properties) {
-        // TODO Currently, it's not possible to use the template cache, i.e. partials and template inheritance will not work - we would have to provide a
-        // special template locator, probably using the deployment ResourceManager
-        engine = MustacheEngineBuilder.newBuilder().registerHelpers(HelpersBuilder.extra().build())
+    public void init(Map<String, String> properties, ResourceManager resourceManager) {
+        this.resourceManager = resourceManager;
+        engine = MustacheEngineBuilder
+                .newBuilder()
+                .registerHelpers(HelpersBuilder.extra().build())
+                .addTemplateLocator(new ResourceManagerTemplateLocator())
                 .setProperty(EngineConfigurationKey.DEBUG_MODE, Boolean.parseBoolean(properties.get("debug")))
-                .setProperty(EngineConfigurationKey.DEFAULT_FILE_ENCODING, properties.containsKey("charset") ? properties.get("charset") : "UTF-8").build();
+                .setProperty(EngineConfigurationKey.DEFAULT_FILE_ENCODING, properties.containsKey("charset") ? properties.get("charset") : "UTF-8")
+                .build();
     }
 
     @Override
-    public Template compile(String templateName, String templateContents) {
-        final Mustache mustache = engine.compileMustache(templateName, templateContents);
+    public Template getTemplate(String templateName) {
         return new Template() {
             @Override
             public String apply(Object data) {
-                return mustache.render(data);
+                return engine.getMustache(templateName).render(data);
             }
         };
     }
 
-    @Override
-    public void close() {
+    private class ResourceManagerTemplateLocator extends AbstractTemplateLocator {
+
+        protected ResourceManagerTemplateLocator() {
+            super(1);
+        }
+
+        @Override
+        public Reader locate(String templateId) {
+            try {
+                return new StringReader(Templates.loadTemplate(templateId, resourceManager));
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+
+        @Override
+        public Set<String> getAllIdentifiers() {
+            // Not supported
+            return Collections.emptySet();
+        }
+
     }
 
 }

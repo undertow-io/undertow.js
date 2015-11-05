@@ -1,5 +1,18 @@
 package io.undertow.js;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ServiceConfigurationError;
+import java.util.ServiceLoader;
+
+import javax.servlet.ServletContext;
+
+import io.undertow.js.templates.TemplateProvider;
 import io.undertow.server.HandlerWrapper;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
@@ -10,15 +23,6 @@ import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.ThreadSetupAction;
 import io.undertow.servlet.handlers.ServletRequestContext;
 import io.undertow.util.FileUtils;
-
-import javax.servlet.ServletContext;
-import java.io.IOException;
-import java.io.InputStream;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ServiceLoader;
 
 /**
  * @author Stuart Douglas
@@ -69,6 +73,14 @@ public class UndertowJSServletExtension implements ServletExtension {
                 ServiceLoader<InjectionProvider> loader = ServiceLoader.load(InjectionProvider.class, classLoader);
                 for(InjectionProvider provider : loader) {
                     builder.addInjectionProvider(provider);
+                }
+                Iterator<TemplateProvider> iterator = ServiceLoader.load(TemplateProvider.class, classLoader).iterator();
+                while (iterator.hasNext()) {
+                    try {
+                        builder.addTemplateProvider(iterator.next());
+                    } catch (ServiceConfigurationError ignored) {
+                        // Catching errors is bad but this should be safe
+                    }
                 }
 
                 builder.addHandlerWrapper(new HandlerWrapper() {

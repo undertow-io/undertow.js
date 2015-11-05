@@ -18,23 +18,6 @@
 
 package io.undertow.js;
 
-import io.undertow.server.HandlerWrapper;
-import io.undertow.server.HttpHandler;
-import io.undertow.server.HttpServerExchange;
-import io.undertow.server.RoutingHandler;
-import io.undertow.server.handlers.resource.Resource;
-import io.undertow.server.handlers.resource.ResourceChangeListener;
-import io.undertow.server.handlers.resource.ResourceManager;
-import io.undertow.util.AttachmentKey;
-import io.undertow.util.FileUtils;
-import io.undertow.util.Methods;
-import io.undertow.util.StatusCodes;
-import io.undertow.websockets.WebSocketConnectionCallback;
-import io.undertow.websockets.WebSocketProtocolHandshakeHandler;
-
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,6 +37,25 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
+
+import io.undertow.js.templates.TemplateProvider;
+import io.undertow.server.HandlerWrapper;
+import io.undertow.server.HttpHandler;
+import io.undertow.server.HttpServerExchange;
+import io.undertow.server.RoutingHandler;
+import io.undertow.server.handlers.resource.Resource;
+import io.undertow.server.handlers.resource.ResourceChangeListener;
+import io.undertow.server.handlers.resource.ResourceManager;
+import io.undertow.util.AttachmentKey;
+import io.undertow.util.FileUtils;
+import io.undertow.util.Methods;
+import io.undertow.util.StatusCodes;
+import io.undertow.websockets.WebSocketConnectionCallback;
+import io.undertow.websockets.WebSocketProtocolHandshakeHandler;
+
 /**
  * Builder class for Undertow Javascipt deployments
  *
@@ -72,7 +74,7 @@ public class UndertowJS {
     private final JavabeanIntrospector javabeanIntrospector = new JavabeanIntrospector();
     private final List<HandlerWrapper> handlerWrappers;
     private final ResourceManager resourceManager;
-
+    private final Map<String, TemplateProvider> templateProviders;
 
     private ScriptEngine engine;
     private HttpHandler routingHandler;
@@ -80,13 +82,24 @@ public class UndertowJS {
     private volatile long lastHotDeploymentCheck = -1;
     private volatile Set<String> rejectPaths = Collections.emptySet();
 
-    public UndertowJS(List<ResourceSet> resources, boolean hotDeployment, ClassLoader classLoader, Map<String, InjectionProvider> injectionProviders, List<HandlerWrapper> handlerWrappers, ResourceManager resourceManager) {
+    /**
+     *
+     * @param resources
+     * @param hotDeployment
+     * @param classLoader
+     * @param injectionProviders
+     * @param handlerWrappers
+     * @param resourceManager
+     * @param templateProviders
+     */
+    public UndertowJS(List<ResourceSet> resources, boolean hotDeployment, ClassLoader classLoader, Map<String, InjectionProvider> injectionProviders, List<HandlerWrapper> handlerWrappers, ResourceManager resourceManager,  Map<String, TemplateProvider> templateProviders) {
         this.classLoader = classLoader;
         this.injectionProviders = injectionProviders;
         this.handlerWrappers = handlerWrappers;
         this.resources = new ArrayList<>(resources);
         this.hotDeployment = hotDeployment;
         this.resourceManager = resourceManager;
+        this.templateProviders = templateProviders;
     }
 
     public UndertowJS start() throws ScriptException, IOException {
@@ -113,8 +126,12 @@ public class UndertowJS {
         RoutingHandler wsRoutingHandler = new RoutingHandler(false);
         wsRoutingHandler.setFallbackHandler(routingHandler);
 
+        for (TemplateProvider templateProvider : templateProviders.values()) {
+            // TODO properties should be configurable
+            templateProvider.init(Collections.emptyMap(), resourceManager);
+        }
 
-        UndertowSupport support = new UndertowSupport(routingHandler, classLoader, injectionProviders, javabeanIntrospector, handlerWrappers, resourceManager, wsRoutingHandler);
+        UndertowSupport support = new UndertowSupport(routingHandler, classLoader, injectionProviders, javabeanIntrospector, handlerWrappers, resourceManager, wsRoutingHandler, templateProviders);
         engine.put("$undertow_support", support);
         engine.put(ScriptEngine.FILENAME, "undertow-core-scripts.js");
         engine.eval(FileUtils.readFile(UndertowJS.class, "undertow-core-scripts.js"));
@@ -153,6 +170,9 @@ public class UndertowJS {
             entry.getKey().getResourceManager().removeResourceChangeListener(entry.getValue());
         }
         listeners.clear();
+        for (TemplateProvider templateProvider : templateProviders.values()) {
+            templateProvider.cleanup();
+        }
         engine = null;
         return this;
     }
@@ -212,6 +232,7 @@ public class UndertowJS {
         private final Map<String, InjectionProvider> injectionProviders = new HashMap<>();
         private final List<HandlerWrapper> handlerWrappers = new ArrayList<>();
         private ResourceManager resourceManager;
+        private final Map<String, TemplateProvider> templateProviders = new HashMap<>();
 
         public ResourceSet addResourceSet(ResourceManager manager) {
             ResourceSet resourceSet = new ResourceSet(manager);
@@ -266,8 +287,13 @@ public class UndertowJS {
             return this;
         }
 
+        public Builder addTemplateProvider(TemplateProvider provider) {
+            this.templateProviders.put(provider.name(), provider);
+            return this;
+        }
+
         public UndertowJS build() {
-            return new UndertowJS(resources, hotDeployment, classLoader, injectionProviders, handlerWrappers, resourceManager);
+            return new UndertowJS(resources, hotDeployment, classLoader, injectionProviders, handlerWrappers, resourceManager, templateProviders);
         }
     }
 
@@ -353,8 +379,9 @@ public class UndertowJS {
         private final List<HandlerWrapper> handlerWrappers;
         private final ResourceManager resourceManager;
         private final RoutingHandler wsRoutingHandler;
+        private final Map<String, TemplateProvider> templateProviders;
 
-        public UndertowSupport(RoutingHandler routingHandler, ClassLoader classLoader, Map<String, InjectionProvider> injectionProviders, JavabeanIntrospector javabeanIntrospector, List<HandlerWrapper> handlerWrappers, ResourceManager resourceManager, RoutingHandler wsRoutingHandler) {
+        public UndertowSupport(RoutingHandler routingHandler, ClassLoader classLoader, Map<String, InjectionProvider> injectionProviders, JavabeanIntrospector javabeanIntrospector, List<HandlerWrapper> handlerWrappers, ResourceManager resourceManager, RoutingHandler wsRoutingHandler, Map<String, TemplateProvider> templateProviders) {
             this.routingHandler = routingHandler;
             this.classLoader = classLoader;
             this.injectionProviders = injectionProviders;
@@ -362,6 +389,7 @@ public class UndertowJS {
             this.handlerWrappers = handlerWrappers;
             this.resourceManager = resourceManager;
             this.wsRoutingHandler = wsRoutingHandler;
+            this.templateProviders = templateProviders;
         }
 
         public ClassLoader getClassLoader() {
@@ -386,6 +414,10 @@ public class UndertowJS {
 
         public ResourceManager getResourceManager() {
             return resourceManager;
+        }
+
+        public Map<String, TemplateProvider> getTemplateProviders() {
+            return templateProviders;
         }
 
         public void addWebsocket(String path, WebSocketConnectionCallback callback) {
