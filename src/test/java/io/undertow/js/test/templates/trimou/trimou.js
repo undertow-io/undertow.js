@@ -26,5 +26,8 @@ $undertow
     })
     .onGet("/testTemplate3", { template: "template3.txt", headers: {'Content-Type': "text/plain; charset=UTF-8", 'foo': 'bar'}}, function($exchange) {
         return {data: "Some Data", loop: [{foo:'a1', bar: 'b1'}, {foo:'a2', bar: 'b2'}]};
+    })
+    .onGet("/testTemplatePartial", "template_partial.txt", function($exchange) {
+        return {data: "Some Data"};
     });
 

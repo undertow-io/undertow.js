@@ -1,12 +1,5 @@
 package io.undertow.js.templates.freemarker;
 
-import freemarker.cache.TemplateLoader;
-import freemarker.template.Configuration;
-import freemarker.template.TemplateException;
-import freemarker.template.TemplateExceptionHandler;
-import io.undertow.js.templates.Template;
-import io.undertow.js.templates.TemplateProvider;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -16,12 +9,23 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import freemarker.cache.TemplateLoader;
+import freemarker.template.Configuration;
+import freemarker.template.TemplateExceptionHandler;
+import io.undertow.js.templates.Template;
+import io.undertow.js.templates.TemplateProvider;
+import io.undertow.js.templates.Templates;
+import io.undertow.server.handlers.resource.ResourceManager;
+
 /**
  * @author Stuart Douglas
  */
 public class FreemarkerTemplateProvider implements TemplateProvider {
 
     private volatile Configuration cfg;
+
+    private volatile ResourceManager resourceManager;
+
     private final Map<String, String> templates = Collections.synchronizedMap(new HashMap<String, String>());
 
     public String name() {
@@ -29,11 +33,10 @@ public class FreemarkerTemplateProvider implements TemplateProvider {
     }
 
     @Override
-    public void init(Map<String, String> properties) {
-        boolean debug = false;
-        if (properties.containsKey("debug")) {
-            debug = Boolean.parseBoolean(properties.get("debug"));
-        }
+    public void init(Map<String, String> properties, ResourceManager resourceManager) {
+        this.resourceManager = resourceManager;
+        boolean debug = Boolean.parseBoolean(properties.get("debug"));
+        templates.clear();
 
         // Create your Configuration instance, and specify if up to what FreeMarker
         // version (here 2.3.22) do you want to apply the fixes that are not 100%
@@ -72,9 +75,9 @@ public class FreemarkerTemplateProvider implements TemplateProvider {
     }
 
     @Override
-    public Template compile(String templateName, String templateContents) {
-        templates.put(templateName, templateContents);
+    public Template getTemplate(String templateName) {
         try {
+            templates.put(templateName, Templates.loadTemplate(templateName, resourceManager));
             freemarker.template.Template temp = cfg.getTemplate(templateName);
             return new Template() {
                 @Override
@@ -88,13 +91,9 @@ public class FreemarkerTemplateProvider implements TemplateProvider {
                     }
                 }
             };
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    @Override
-    public void close() {
-
-    }
 }

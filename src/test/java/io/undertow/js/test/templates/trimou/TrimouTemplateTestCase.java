@@ -31,6 +31,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import io.undertow.js.UndertowJS;
+import io.undertow.js.templates.trimou.TrimouTemplateProvider;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.resource.ClassPathResourceManager;
@@ -51,7 +52,11 @@ public class TrimouTemplateTestCase {
 
         final ClassPathResourceManager res = new ClassPathResourceManager(TrimouTemplateTestCase.class.getClassLoader(),
                 TrimouTemplateTestCase.class.getPackage());
-        UndertowJS js = UndertowJS.builder().addResources(res, "trimou.js").setResourceManager(res).build();
+        UndertowJS js = UndertowJS.builder()
+                .addResources(res, "trimou.js")
+                .addTemplateProvider(new TrimouTemplateProvider())
+                .setResourceManager(res)
+                .build();
         js.start();
         DefaultServer.setRootHandler(js.getHandler(new ResourceHandler(res, new HttpHandler() {
             @Override
@@ -90,6 +95,20 @@ public class TrimouTemplateTestCase {
             assertEquals(StatusCodes.OK, result.getStatusLine().getStatusCode());
             assertEquals("Template Data: Some Data  a1-b1  a2-b2 ", HttpClientUtils.readResponse(result));
             assertEquals("text/plain; charset=UTF-8", result.getFirstHeader("Content-Type").getValue());
+        } finally {
+            client.getConnectionManager().shutdown();
+        }
+    }
+
+    @Test
+    public void testTemplatePartial() throws IOException {
+        final TestHttpClient client = new TestHttpClient();
+        try {
+            HttpGet get = new HttpGet(DefaultServer.getDefaultServerURL() + "/testTemplatePartial");
+            HttpResponse result = client.execute(get);
+            assertEquals(StatusCodes.OK, result.getStatusLine().getStatusCode());
+            assertEquals("And now... Template Data: Some Data", HttpClientUtils.readResponse(result));
+            assertEquals("text/html; charset=UTF-8", result.getFirstHeader("Content-Type").getValue());
         } finally {
             client.getConnectionManager().shutdown();
         }

@@ -31,7 +31,6 @@ var $undertow = {
         HandlerWrapper: Java.type("io.undertow.server.HandlerWrapper"),
         EagerFormParsingHandler: Java.type("io.undertow.server.handlers.form.EagerFormParsingHandler"),
         FormDataParser: Java.type("io.undertow.server.handlers.form.FormDataParser"),
-        Templates: Java.type("io.undertow.js.templates.Templates"),
         HashMap: Java.type("java.util.HashMap"),
         LinkedList: Java.type("java.util.LinkedList"),
         ServletRequestContext: Java.type("io.undertow.servlet.handlers.ServletRequestContext"),
@@ -575,9 +574,8 @@ var $undertow = {
             headers = {};
         }
         if(template != null) {
-            var templateProvider = $undertow._java.Templates.loadTemplateProvider($undertow_support.classLoader, args['template_type']);
-            templateProvider.init({});
-            templateInstance = templateProvider.compile(template, $undertow._java.Templates.loadTemplate(template, $undertow_support.resourceManager));
+            var templateProvider = $undertow_support.templateProviders[args['template_type']];
+            templateInstance = templateProvider.getTemplate(template);
             if(headers['Content-Type'] == null) {
                 headers['Content-Type'] = $undertow.templateContentType;
             }
