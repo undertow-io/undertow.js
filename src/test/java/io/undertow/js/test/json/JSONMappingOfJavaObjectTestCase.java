@@ -18,6 +18,21 @@
 
 package io.undertow.js.test.json;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.script.ScriptException;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import io.undertow.js.InjectionContext;
 import io.undertow.js.InjectionProvider;
 import io.undertow.js.UndertowJS;
 import io.undertow.server.HttpHandler;
@@ -27,18 +42,6 @@ import io.undertow.testutils.DefaultServer;
 import io.undertow.testutils.HttpClientUtils;
 import io.undertow.testutils.TestHttpClient;
 import io.undertow.util.StatusCodes;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import javax.script.ScriptException;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @author Stuart Douglas
@@ -94,8 +97,8 @@ public class JSONMappingOfJavaObjectTestCase {
     public static final class TestDatabaseInjection implements InjectionProvider {
 
         @Override
-        public Object getObject(String name) {
-            String[] parts = name.split(":");
+        public Object getObject(InjectionContext injectionContext) {
+            String[] parts = injectionContext.getName().split(":");
             if(parts.length > 2) {
                 List<Bean> ret = new ArrayList<>();
                 for(int i = 0; i < parts.length; i += 2) {

@@ -16,26 +16,7 @@
  *  limitations under the License.
  */
 
-package io.undertow.js;
-
-/**
- * Provider interface that allows injection into javascript handlers
- * and filters.
- *
- * @author Stuart Douglas
- */
-public interface InjectionProvider {
-
-    /**
-     *
-     * @param injectionContext
-     * @return an injectable reference
-     */
-    Object getObject(InjectionContext injectionContext);
-
-    /**
-     *
-     * @return the prefix used in the injection params
-     */
-    String getPrefix();
-}
+$undertow
+    .onGet("/foo", ['cdi:bar', function ($exchange, bar) {
+        return bar.ping();
+    }]);

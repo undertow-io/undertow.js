@@ -18,6 +18,24 @@
 
 package io.undertow.js.test.websocket;
 
+import java.net.URI;
+import java.nio.ByteBuffer;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
+
+import javax.websocket.ClientEndpoint;
+import javax.websocket.CloseReason;
+import javax.websocket.ContainerProvider;
+import javax.websocket.OnMessage;
+import javax.websocket.Session;
+
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import io.undertow.js.InjectionContext;
 import io.undertow.js.InjectionProvider;
 import io.undertow.js.UndertowJS;
 import io.undertow.server.HttpHandler;
@@ -25,23 +43,6 @@ import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.resource.ClassPathResourceManager;
 import io.undertow.server.handlers.resource.ResourceHandler;
 import io.undertow.testutils.DefaultServer;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import javax.websocket.ClientEndpoint;
-import javax.websocket.ClientEndpointConfig;
-import javax.websocket.CloseReason;
-import javax.websocket.ContainerProvider;
-import javax.websocket.Endpoint;
-import javax.websocket.OnMessage;
-import javax.websocket.Session;
-import java.net.URI;
-import java.nio.ByteBuffer;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author Stuart Douglas
@@ -118,8 +119,8 @@ public class JavascriptWebsocketTestCase {
     private static final class TestInjectionProvider implements InjectionProvider {
 
         @Override
-        public Object getObject(String name) {
-            return "INJECTED:" + name;
+        public Object getObject(InjectionContext injectionContext) {
+            return "INJECTED:" + injectionContext.getName();
         }
 
         @Override

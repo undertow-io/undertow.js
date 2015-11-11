@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2014 Red Hat, Inc., and individual contributors
+ * Copyright 2015 Red Hat, Inc., and individual contributors
  * as indicated by the @author tags.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,27 +15,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+package io.undertow.js.test.cdi;
 
-package io.undertow.js;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
-/**
- * Provider interface that allows injection into javascript handlers
- * and filters.
- *
- * @author Stuart Douglas
- */
-public interface InjectionProvider {
+import javax.annotation.PreDestroy;
+import javax.enterprise.context.Dependent;
+import javax.inject.Named;
 
-    /**
-     *
-     * @param injectionContext
-     * @return an injectable reference
-     */
-    Object getObject(InjectionContext injectionContext);
+@Named
+@Dependent
+public class Bar {
 
-    /**
-     *
-     * @return the prefix used in the injection params
-     */
-    String getPrefix();
+    public static final List<Long> DESTROYED = Collections.synchronizedList(new ArrayList<>());
+
+    public String ping() {
+        return "Barpong";
+    }
+
+    @PreDestroy
+    public void destroy() {
+        DESTROYED.add(System.currentTimeMillis());
+    }
+
 }
