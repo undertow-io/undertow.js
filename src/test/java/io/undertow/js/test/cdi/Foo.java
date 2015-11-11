@@ -25,7 +25,7 @@ import javax.inject.Named;
 public class Foo {
 
     public String ping() {
-        return "pong";
+        return "Foopong";
     }
 
 }

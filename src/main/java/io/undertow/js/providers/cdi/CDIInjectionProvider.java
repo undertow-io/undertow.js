@@ -17,13 +17,17 @@
  */
 package io.undertow.js.providers.cdi;
 
+import javax.enterprise.context.Dependent;
+import javax.enterprise.context.spi.CreationalContext;
 import javax.enterprise.inject.spi.Bean;
 import javax.enterprise.inject.spi.BeanManager;
 import javax.enterprise.inject.spi.CDI;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 
+import io.undertow.js.InjectionContext;
 import io.undertow.js.InjectionProvider;
+import io.undertow.js.UndertowScriptLogger;
 
 /**
  *
@@ -36,17 +40,33 @@ public final class CDIInjectionProvider implements InjectionProvider {
     private volatile BeanManager beanManager;
 
     @Override
-    public Object getObject(String name) {
+    public Object getObject(InjectionContext injectionContext) {
         if (beanManager == null) {
             lookupBeanManager();
         }
-        Bean<?> bean = beanManager.resolve(beanManager.getBeans(name));
-        return beanManager.getReference(bean, null, beanManager.createCreationalContext(bean));
+        Bean<?> bean = beanManager.resolve(beanManager.getBeans(injectionContext.getName()));
+        if (bean == null) {
+            throw UndertowScriptLogger.ROOT_LOGGER.couldNotFindBean(injectionContext.getName());
+        }
+        return getReference(bean, injectionContext);
     }
 
     @Override
     public String getPrefix() {
         return "cdi";
+    }
+
+    private <T> Object getReference(final Bean<T> bean, InjectionContext injectionContext) {
+
+        final CreationalContext<T> creationalContext = beanManager.createCreationalContext(bean);
+
+        if (Dependent.class.equals(bean.getScope())) {
+            final T reference = bean.create(creationalContext);
+            injectionContext.whenHandlerDiscarded(() -> bean.destroy(reference, creationalContext));
+            return reference;
+        } else {
+            return beanManager.getReference(bean, Object.class, creationalContext);
+        }
     }
 
     private synchronized void lookupBeanManager() {
@@ -59,7 +79,7 @@ public final class CDIInjectionProvider implements InjectionProvider {
                 beanManager = CDI.current().getBeanManager();
             }
             if (beanManager == null) {
-                throw new RuntimeException("Unable to lookup BeanManager");
+                throw UndertowScriptLogger.ROOT_LOGGER.unableToLookupBeanManager();
             }
         }
     }

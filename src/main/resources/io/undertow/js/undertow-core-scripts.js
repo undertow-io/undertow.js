@@ -512,7 +512,7 @@ var $undertow = {
                     };
                 } else {
                     return function () {
-                        return provider.getObject(suffix);
+                        return provider.getObject($undertow_support.getInjectionContext(suffix));
                     };
                 }
             }
