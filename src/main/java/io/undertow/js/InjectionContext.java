@@ -15,27 +15,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package io.undertow.js;
 
 /**
- * Provider interface that allows injection into javascript handlers
- * and filters.
  *
- * @author Stuart Douglas
+ * @author Martin Kouba
+ *
  */
-public interface InjectionProvider {
+public interface InjectionContext {
 
     /**
      *
-     * @param injectionContext
-     * @return an injectable reference
+     * @return
      */
-    Object getObject(InjectionContext injectionContext);
+    String getName();
 
     /**
+     * Register a callback which is invoked when the handler requesting the injection is removed from service, i.e. after {@link UndertowJS} rebuild or during
+     * {@link UndertowJS#stop()}.
      *
-     * @return the prefix used in the injection params
+     * @param callback
      */
-    String getPrefix();
+    void whenHandlerDiscarded(Runnable callback);
+
 }
