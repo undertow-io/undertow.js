@@ -15,27 +15,34 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package io.undertow.js;
 
 /**
- * Provider interface that allows injection into javascript handlers
- * and filters.
  *
- * @author Stuart Douglas
+ * @author Martin Kouba
+ *
  */
-public interface InjectionProvider {
+public interface InjectionContext {
 
     /**
      *
-     * @param injectionContext
-     * @return an injectable reference
+     * @return
      */
-    Object getObject(InjectionContext injectionContext);
+    String getName();
+
+    /**
+     * Set a callback which is invoked right after the request is handled.
+     *
+     * TODO websocket?
+     *
+     * @param callback
+     */
+    void setRequestHandledCallback(Runnable callback);
 
     /**
      *
-     * @return the prefix used in the injection params
+     * @return the callback or null if not set
      */
-    String getPrefix();
+    Runnable getRequestHandledCallback();
+
 }

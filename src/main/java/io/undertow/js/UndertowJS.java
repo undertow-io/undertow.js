@@ -115,7 +115,6 @@ public class UndertowJS {
         ScriptEngineManager factory = new ScriptEngineManager();
         ScriptEngine engine = factory.getEngineByName("JavaScript");
 
-
         RoutingHandler routingHandler = new RoutingHandler(true);
         routingHandler.setFallbackHandler(new HttpHandler() {
             @Override
@@ -130,7 +129,6 @@ public class UndertowJS {
             // TODO properties should be configurable
             templateProvider.init(Collections.emptyMap(), resourceManager);
         }
-
         UndertowSupport support = new UndertowSupport(routingHandler, classLoader, injectionProviders, javabeanIntrospector, handlerWrappers, resourceManager, wsRoutingHandler, templateProviders);
         engine.put("$undertow_support", support);
         engine.put(ScriptEngine.FILENAME, "undertow-core-scripts.js");
@@ -339,7 +337,7 @@ public class UndertowJS {
 
         }
 
-        private Map<Class, Map<String, Method>> cache = new ConcurrentHashMap<>();
+        private Map<Class<?>, Map<String, Method>> cache = new ConcurrentHashMap<>();
 
         public Map<String, Method> inspect(Class<?> clazz) {
             Map<String, Method> existing = cache.get(clazz);
@@ -423,6 +421,38 @@ public class UndertowJS {
         public void addWebsocket(String path, WebSocketConnectionCallback callback) {
             wsRoutingHandler.add(Methods.GET, path, new WebSocketProtocolHandshakeHandler(callback, routingHandler));
         }
+
+        public InjectionContext getInjectionContext(String name) {
+            return new DefaultInjectionContext(name);
+        }
+
+    }
+
+    private static final class DefaultInjectionContext implements InjectionContext {
+
+        private final String name;
+
+        private Runnable requestHandledCallback;
+
+        DefaultInjectionContext(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public void setRequestHandledCallback(Runnable callback) {
+            this.requestHandledCallback = callback;
+        }
+
+        @Override
+        public Runnable getRequestHandledCallback() {
+            return requestHandledCallback;
+        }
+
     }
 
 }

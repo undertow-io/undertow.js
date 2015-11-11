@@ -18,6 +18,23 @@
 
 package io.undertow.js.test;
 
+import java.io.IOException;
+import java.util.Arrays;
+
+import javax.script.ScriptException;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.message.BasicNameValuePair;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import io.undertow.js.InjectionContext;
 import io.undertow.js.InjectionProvider;
 import io.undertow.js.UndertowJS;
 import io.undertow.server.HandlerWrapper;
@@ -30,20 +47,6 @@ import io.undertow.testutils.HttpClientUtils;
 import io.undertow.testutils.TestHttpClient;
 import io.undertow.util.HttpString;
 import io.undertow.util.StatusCodes;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.message.BasicNameValuePair;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import javax.script.ScriptException;
-import java.io.IOException;
-import java.util.Arrays;
 
 /**
  * @author Stuart Douglas
@@ -274,8 +277,8 @@ public class SimpleJavascriptTestCase {
     private static final class TestInjectionProvider implements InjectionProvider {
 
         @Override
-        public Object getObject(String name) {
-            return "INJECTED:" + name;
+        public Object getObject(InjectionContext injectionContext) {
+            return "INJECTED:" + injectionContext.getName();
         }
 
         @Override
