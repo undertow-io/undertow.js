@@ -30,9 +30,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.jboss.weld.environment.Container;
 import org.jboss.weld.environment.servlet.Listener;
 import org.jboss.weld.environment.undertow.UndertowContainer;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -57,62 +55,54 @@ import io.undertow.util.StatusCodes;
  *
  */
 @RunWith(DefaultServer.class)
-public class CDIInjectionProviderTestCase {
+public class CDIInjectionProviderDependentTestCase {
 
-    private UndertowJS undertowJs;
+    @Test
+    public void testDependentBean() throws ClientProtocolException, IOException, ScriptException, ServletException {
 
-    private DeploymentManager manager;
-
-    @Before
-    public void start() throws ScriptException, IOException, ServletException {
-
-        undertowJs = UndertowJS.builder()
-                .addInjectionProvider(new CDIInjectionProvider())
-                .addResources(new ClassPathResourceManager(CDIInjectionProviderTestCase.class.getClassLoader(), CDIInjectionProviderTestCase.class.getPackage()), "cdi_injection.js")
+        UndertowJS undertowJs = UndertowJS.builder().addInjectionProvider(new CDIInjectionProvider())
+                .addResources(new ClassPathResourceManager(CDIInjectionProviderDependentTestCase.class.getClassLoader(),
+                        CDIInjectionProviderDependentTestCase.class.getPackage()), "cdi_dependent_bean.js")
                 .build();
         undertowJs.start();
 
         final ServletContainer container = ServletContainer.Factory.newInstance();
 
-        DeploymentInfo builder = new DeploymentInfo()
-                .setClassLoader(CDIInjectionProviderTestCase.class.getClassLoader())
-                .addListener(Servlets.listener(Listener.class))
-                .addInitParameter(Container.CONTEXT_PARAM_CONTAINER_CLASS, UndertowContainer.class.getName())
-                .setContextPath("/cdi")
-                .setDeploymentName("cdiinject.war")
-                .addInnerHandlerChainWrapper(new HandlerWrapper() {
+        DeploymentInfo builder = new DeploymentInfo().setClassLoader(CDIInjectionProviderDependentTestCase.class.getClassLoader())
+                .addListener(Servlets.listener(Listener.class)).addInitParameter(Container.CONTEXT_PARAM_CONTAINER_CLASS, UndertowContainer.class.getName())
+                .setContextPath("/cdi").setDeploymentName("cdiinject.war").addInnerHandlerChainWrapper(new HandlerWrapper() {
                     @Override
                     public HttpHandler wrap(HttpHandler handler) {
                         return undertowJs.getHandler(handler);
                     }
                 });
 
-        manager = container.addDeployment(builder);
+        DeploymentManager manager = container.addDeployment(builder);
         manager.deploy();
         PathHandler root = new PathHandler();
         root.addPrefixPath(builder.getContextPath(), manager.start());
 
         DefaultServer.setRootHandler(root);
-    }
 
-    @After
-    public void stop() throws ServletException {
-        manager.stop();
-        manager.undeploy();
-        undertowJs.stop();
-    }
-
-    @Test
-    public void testInjection() throws ClientProtocolException, IOException {
         final TestHttpClient client = new TestHttpClient();
         try {
-            HttpGet get = new HttpGet(DefaultServer.getDefaultServerURL() + "/cdi/foo");
-            CloseableHttpResponse result = client.execute(get);
-            Assert.assertEquals(StatusCodes.OK, result.getStatusLine().getStatusCode());
-            assertEquals("Foopong", HttpClientUtils.readResponse(result));
+            testRequest(client);
+            testRequest(client);
+            testRequest(client);
+            assertEquals(Bar.DESTROYED.size(), 3);
         } finally {
             client.getConnectionManager().shutdown();
+            manager.stop();
+            manager.undeploy();
+            undertowJs.stop();
         }
+    }
+
+    private void testRequest(TestHttpClient client) throws ClientProtocolException, IOException {
+        HttpGet get = new HttpGet(DefaultServer.getDefaultServerURL() + "/cdi/foo");
+        CloseableHttpResponse result = client.execute(get);
+        Assert.assertEquals(StatusCodes.OK, result.getStatusLine().getStatusCode());
+        assertEquals("Barpong", HttpClientUtils.readResponse(result));
     }
 
 }

@@ -52,4 +52,10 @@ public interface UndertowScriptLogger extends BasicLogger {
 
     @Message(id = 5, value = "Could not find template file %s")
     IllegalArgumentException templateNotFound(String template);
+
+    @Message(id = 6, value = "Could not find a CDI bean with name: %s")
+    IllegalArgumentException couldNotFindBean(String name);
+
+    @Message(id = 7, value = "Unable to lookup BeanManager")
+    RuntimeException unableToLookupBeanManager();
 }

@@ -18,15 +18,12 @@
 
 package io.undertow.js.test.jdbc;
 
-import io.undertow.js.InjectionProvider;
-import io.undertow.js.UndertowJS;
-import io.undertow.server.HttpHandler;
-import io.undertow.server.HttpServerExchange;
-import io.undertow.server.handlers.resource.ClassPathResourceManager;
-import io.undertow.testutils.DefaultServer;
-import io.undertow.testutils.HttpClientUtils;
-import io.undertow.testutils.TestHttpClient;
-import io.undertow.util.StatusCodes;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.Statement;
+
+import javax.script.ScriptException;
+
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
@@ -40,10 +37,16 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import javax.script.ScriptException;
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.Statement;
+import io.undertow.js.InjectionContext;
+import io.undertow.js.InjectionProvider;
+import io.undertow.js.UndertowJS;
+import io.undertow.server.HttpHandler;
+import io.undertow.server.HttpServerExchange;
+import io.undertow.server.handlers.resource.ClassPathResourceManager;
+import io.undertow.testutils.DefaultServer;
+import io.undertow.testutils.HttpClientUtils;
+import io.undertow.testutils.TestHttpClient;
+import io.undertow.util.StatusCodes;
 
 /**
  * @author Stuart Douglas
@@ -163,7 +166,7 @@ public class JavascriptJDBCWrapperTestCase {
     public static final class TestDatabaseInjection implements InjectionProvider {
 
         @Override
-        public Object getObject(String name) {
+        public Object getObject(InjectionContext injectionContext) {
             return ds;
         }
 

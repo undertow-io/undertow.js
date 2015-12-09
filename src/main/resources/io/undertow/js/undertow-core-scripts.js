@@ -511,8 +511,13 @@ var $undertow = {
                         return null;
                     };
                 } else {
-                    return function () {
-                        return provider.getObject(suffix);
+                    return function (exchange, requestHandledCallbacks) {
+                        var injectionContext = $undertow_support.getInjectionContext(suffix);
+                        var injectedObject = provider.getObject(injectionContext);
+                        if (injectionContext.getRequestHandledCallback() != null) {
+                            requestHandledCallbacks.push(injectionContext.getRequestHandledCallback());
+                        }
+                        return injectedObject;
                     };
                 }
             }
@@ -523,9 +528,10 @@ var $undertow = {
      * Manually resolves an injection
      *
      * @param name The item to resolve
+     * @param requestHandledCallbacks The list of callbacks
      */
-    resolve: function(name) {
-        var value =  $undertow._create_injection_function(name)();
+    resolve: function(name, requestHandledCallbacks) {
+        var value =  $undertow._create_injection_function(name)(null, requestHandledCallbacks);
         for (var j = 0; j < $undertow.injection_wrappers.length; ++j) {
             value = $undertow.injection_wrappers[j](value);
         }
@@ -632,14 +638,20 @@ var $undertow = {
                 }
                 var ut = null;
                 try {
+                    var requestHandledCallbacks = new Array();
                     if(transactional) {
-                        ut = $undertow.resolve('jndi:java:comp/UserTransaction');
+                        ut = $undertow.resolve('jndi:java:comp/UserTransaction', requestHandledCallbacks);
                         ut.begin();
                     }
                     var paramList = [];
                     paramList.push($exchange);
-                    $undertow._create_injected_parameter_list(params, paramList, $exchange);
+                    Array.prototype.push.apply(requestHandledCallbacks, $undertow._create_injected_parameter_list(params, paramList, $exchange));
                     var result = handler.apply(null, paramList);
+                    if (requestHandledCallbacks.length > 0) {
+                        for (var i = 0; i < requestHandledCallbacks.length; ++i) {
+                            requestHandledCallbacks[i].run();
+                        }
+                    }
                     if(result != null) {
                         if (template != null) {
                             $exchange.send(templateInstance.apply($undertow.toTemplateData(result)));
@@ -677,18 +689,20 @@ var $undertow = {
      * @private
      */
     _create_injected_parameter_list: function (params, paramList, $exchange) {
+        var requestHandledCallbacks = new Array();
         for (var i = 0; i < params.length; ++i) {
             var param = params[i];
             if (param == null) {
                 paramList.push(null);
             } else {
-                var toInject = param($exchange);
+                var toInject = param($exchange, requestHandledCallbacks);
                 for (var j = 0; j < $undertow.injection_wrappers.length; ++j) {
                     toInject = $undertow.injection_wrappers[j](toInject);
                 }
                 paramList.push(toInject);
             }
         }
+        return requestHandledCallbacks;
     },
 
     onGet: function () {
@@ -812,8 +826,13 @@ var $undertow = {
                         paramList.push(function () {
                             next.handleRequest(underlyingExchange);
                         });
-                        $undertow._create_injected_parameter_list(params, paramList, $exchange);
+                        var requestHandledCallbacks = $undertow._create_injected_parameter_list(params, paramList, $exchange);
                         handler.apply(null, paramList);
+                        if (requestHandledCallbacks != null && requestHandledCallbacks === Array) {
+                            for (var i = 0; i < requestHandledCallbacks.length; ++i) {
+                                requestHandledCallbacks[i].run();
+                            }
+                        }
                     }
 
                 });
