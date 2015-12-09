@@ -19,4 +19,7 @@
 $undertow
     .onGet("/foo", ['cdi:bar', function ($exchange, bar) {
         return bar.ping();
-    }]);
+    }])
+    .websocket("/websocket", ['cdi:bar', function (connection, bar) {
+        connection.send(bar.ping());
+    }]);;

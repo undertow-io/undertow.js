@@ -20,9 +20,17 @@ package io.undertow.js.test.cdi;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.net.URI;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
 
 import javax.script.ScriptException;
 import javax.servlet.ServletException;
+import javax.websocket.ClientEndpoint;
+import javax.websocket.CloseReason;
+import javax.websocket.ContainerProvider;
+import javax.websocket.OnMessage;
+import javax.websocket.Session;
 
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -30,7 +38,10 @@ import org.apache.http.client.methods.HttpGet;
 import org.jboss.weld.environment.Container;
 import org.jboss.weld.environment.servlet.Listener;
 import org.jboss.weld.environment.undertow.UndertowContainer;
+import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -57,10 +68,15 @@ import io.undertow.util.StatusCodes;
 @RunWith(DefaultServer.class)
 public class CDIInjectionProviderDependentTestCase {
 
-    @Test
-    public void testDependentBean() throws ClientProtocolException, IOException, ScriptException, ServletException {
+    private static final LinkedBlockingDeque<String> messages = new LinkedBlockingDeque<>();
+    private static final LinkedBlockingDeque<byte[]> binaryMessages = new LinkedBlockingDeque<>();
 
-        UndertowJS undertowJs = UndertowJS.builder().addInjectionProvider(new CDIInjectionProvider())
+
+    private static UndertowJS undertowJs;
+    private static DeploymentManager manager;
+    @BeforeClass
+    public static void setup() throws ScriptException, IOException, ServletException {
+        undertowJs = UndertowJS.builder().addInjectionProvider(new CDIInjectionProvider())
                 .addResources(new ClassPathResourceManager(CDIInjectionProviderDependentTestCase.class.getClassLoader(),
                         CDIInjectionProviderDependentTestCase.class.getPackage()), "cdi_dependent_bean.js")
                 .build();
@@ -77,12 +93,28 @@ public class CDIInjectionProviderDependentTestCase {
                     }
                 });
 
-        DeploymentManager manager = container.addDeployment(builder);
+        manager = container.addDeployment(builder);
         manager.deploy();
         PathHandler root = new PathHandler();
         root.addPrefixPath(builder.getContextPath(), manager.start());
 
         DefaultServer.setRootHandler(root);
+    }
+
+    @AfterClass
+    public static void teardown() throws ServletException {
+        manager.stop();
+        manager.undeploy();
+        undertowJs.stop();
+    }
+
+    @After
+    public void after() {
+        Bar.DESTROYED.clear();
+    }
+
+    @Test
+    public void testDependentBean() throws IOException, ScriptException, ServletException {
 
         final TestHttpClient client = new TestHttpClient();
         try {
@@ -92,10 +124,33 @@ public class CDIInjectionProviderDependentTestCase {
             assertEquals(Bar.DESTROYED.size(), 3);
         } finally {
             client.getConnectionManager().shutdown();
-            manager.stop();
-            manager.undeploy();
-            undertowJs.stop();
         }
+
+    }
+
+    @Test
+    public void testWebsocketInjection() throws Exception {
+        Session session = ContainerProvider.getWebSocketContainer().connectToServer(ClientEndpointImpl.class, new URI("ws://" + DefaultServer.getHostAddress("default") + ":" + DefaultServer.getHostPort("default") + "/cdi/websocket"));
+        Assert.assertEquals("Barpong", messages.poll(5, TimeUnit.SECONDS));
+
+        session.close(new CloseReason(CloseReason.CloseCodes.GOING_AWAY, "foo"));
+        Thread.sleep(1000);
+        assertEquals(Bar.DESTROYED.size(), 1);
+    }
+
+    @ClientEndpoint
+    private static class ClientEndpointImpl {
+
+        @OnMessage
+        public void message(String message) {
+            messages.add(message);
+        }
+
+        @OnMessage
+        public void message(byte[] message) {
+            binaryMessages.add(message);
+        }
+
     }
 
     private void testRequest(TestHttpClient client) throws ClientProtocolException, IOException {

@@ -345,6 +345,7 @@ var $undertow = {
     WebSocketConnection: function(underlying) {
         this.$underlying = underlying;
         var $con = this;
+        var requestHandledCallbacks = [];
 
         this.send = function(message) {
             if(message == null) {
@@ -412,11 +413,21 @@ var $undertow = {
                 if($con.onError != null) {
                     $con.onError(error);
                 }
+                if ($con.requestHandledCallbacks != null) {
+                    for (var i = 0; i < $con.requestHandledCallbacks.length; ++i) {
+                        $con.requestHandledCallbacks[i].run();
+                    }
+                }
             },
 
             onCloseMessage: function(msg, wsChannel) {
                 if($con.onClose != null) {
                     $con.onClose(msg);
+                }
+                if ($con.requestHandledCallbacks != null && $con.requestHandledCallbacks.constructor === Array) {
+                    for (var i = 0; i < $con.requestHandledCallbacks.length; ++i) {
+                        $con.requestHandledCallbacks[i].run();
+                    }
                 }
             }
         });
@@ -756,7 +767,8 @@ var $undertow = {
                 var con = new $undertow.WebSocketConnection(channel);
                 var paramList = [];
                 paramList.push(con);
-                $undertow._create_injected_parameter_list(params, paramList, null);
+
+                con.requestHandledCallbacks = $undertow._create_injected_parameter_list(params, paramList, null);
                 handler.apply(null, paramList);
             }
         });
@@ -828,7 +840,7 @@ var $undertow = {
                         });
                         var requestHandledCallbacks = $undertow._create_injected_parameter_list(params, paramList, $exchange);
                         handler.apply(null, paramList);
-                        if (requestHandledCallbacks != null && requestHandledCallbacks === Array) {
+                        if (requestHandledCallbacks != null && requestHandledCallbacks.constructor === Array) {
                             for (var i = 0; i < requestHandledCallbacks.length; ++i) {
                                 requestHandledCallbacks[i].run();
                             }
