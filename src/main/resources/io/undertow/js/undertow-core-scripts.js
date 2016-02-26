@@ -252,7 +252,10 @@ var $undertow = {
             for (var i = 1; i < arguments.length; ++i) {
                 statement.setObject(i, arguments[i]);
             }
-            return statement.executeUpdate();
+            var ret = statement.executeUpdate();
+            statement.close();
+            conn.close();
+            return ret;
         }
 
         this._select = function (args) {
