@@ -29,5 +29,8 @@ $undertow
     })
     .onGet("/testTemplatePartial", "template_partial.txt", function($exchange) {
         return {data: "Some Data"};
+    })
+    .onGet("/testTemplateExtensions", "template_extensions.txt", function($exchange) {
+        return {data: "Dummy"};
     });
 
